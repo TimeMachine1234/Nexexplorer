@@ -181,7 +181,12 @@ pub fn get_file_metadata(path: String) -> Result<FileMetadata, String> {
 
 fn get_image_dimensions(path: &Path) -> Option<(u32, u32)> {
     // Read first bytes to determine dimensions from header
-    let data = fs::read(path).ok()?;
+    use std::io::Read;
+    let mut file = fs::File::open(path).ok()?;
+    let mut data = [0u8; 1024];
+    let n = file.read(&mut data).ok()?;
+    let data = &data[..n];
+
     if data.len() < 24 {
         return None;
     }

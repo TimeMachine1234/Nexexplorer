@@ -15,9 +15,11 @@
         "title": "NexExplorer",
         "width": 1200,
         "height": 800,
-        "minWidth": 800,
-        "minHeight": 500,
-        "decorations": false
+        "minWidth": 400,
+        "minHeight": 300,
+        "decorations": false,
+        "shadow": true,
+        "zoomHotkeysEnabled": true
       }
     ],
     "security": {

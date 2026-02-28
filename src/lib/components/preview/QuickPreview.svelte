@@ -1,7 +1,11 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { convertFileSrc } from "@tauri-apps/api/core";
+  import { onDestroy, untrack } from "svelte";
   import AudioPlayer from "./AudioPlayer.svelte";
+  import ImagePreview from "./ImagePreview.svelte";
+  import PdfPreview from "./PdfPreview.svelte";
+  import VideoPreview from "./VideoPreview.svelte";
 
   interface FileMetadata {
     name: string;
@@ -37,14 +41,68 @@
   let loading: boolean = $state(true);
   let previewType: "image" | "text" | "video" | "audio" | "pdf" | "document" | "none" = $state("none");
 
-  $effect(() => {
-    loadPreview(filePath);
+  let _loadDebounce: ReturnType<typeof setTimeout> | null = null;
+  let _videoEl: HTMLVideoElement | null = null;
+  let _audioEl: HTMLAudioElement | null = null;
+
+  function cleanupActiveMedia() {
+    if (_videoEl) {
+      _videoEl.pause();
+      _videoEl.removeAttribute("src");
+      _videoEl.load();
+    }
+    if (_audioEl) {
+      _audioEl.pause();
+      _audioEl.removeAttribute("src");
+      _audioEl.load();
+    }
+  }
+
+  onDestroy(() => {
+    if (_loadDebounce) clearTimeout(_loadDebounce);
+    cleanupActiveMedia();
+    metadata = null;
+    textContent = null;
+    assetUrl = "";
   });
 
+  $effect(() => {
+    const currentPath = filePath;
+    untrack(() => {
+      if (_loadDebounce) clearTimeout(_loadDebounce);
+      cleanupActiveMedia();
+      metadata = null;
+      textContent = null;
+      assetUrl = "";
+      loading = true;
+      previewType = "none";
+      _loadDebounce = setTimeout(() => {
+        loadPreview(currentPath);
+      }, 50);
+    });
+  });
+
+  // Capture media refs from the DOM so we can tear them down on switch
+  function captureVideo(node: HTMLVideoElement) {
+    _videoEl = node;
+    return { destroy() { _videoEl = null; node.pause(); node.removeAttribute("src"); node.load(); } };
+  }
+  function captureAudio(node: HTMLAudioElement) {
+    _audioEl = node;
+    return { destroy() { _audioEl = null; node.pause(); node.removeAttribute("src"); node.load(); } };
+  }
+
+  let currentLoadId = 0;
+
   async function loadPreview(path: string) {
+    const loadId = ++currentLoadId;
+    textContent = null;
+    assetUrl = "";
     loading = true;
     try {
       const meta: FileMetadata = await invoke("get_file_metadata", { path });
+      if (loadId !== currentLoadId) return;
+
       metadata = meta;
       const mime = meta.mime_type;
 
@@ -68,14 +126,19 @@
         previewType = "document";
       } else if (mime.startsWith("text/") || mime === "application/json" || mime === "application/xml") {
         previewType = "text";
-        textContent = await invoke("read_text_preview", { path });
+        const txt: TextPreview = await invoke("read_text_preview", { path });
+        if (loadId !== currentLoadId) return;
+        textContent = txt;
       } else {
         previewType = "none";
       }
     } catch {
+      if (loadId !== currentLoadId) return;
       previewType = "none";
     } finally {
-      loading = false;
+      if (loadId === currentLoadId) {
+        loading = false;
+      }
     }
   }
 
@@ -126,20 +189,23 @@
         <span class="quick-size">{formatBytes(metadata.size)}</span>
       {/if}
     </div>
-    <div class="quick-body">
+    <div class="quick-body" class:quick-body-pdf={previewType === "pdf"}>
       {#if loading}
         <div class="quick-center">Loading...</div>
       {:else if previewType === "image"}
-        <img src={assetUrl} alt={metadata?.name || ""} class="quick-image" />
+        <ImagePreview src={assetUrl} alt={metadata?.name || ""} class="quick-image" />
       {:else if previewType === "video"}
-        <!-- svelte-ignore a11y_media_has_caption -->
-        <video src={assetUrl} controls autoplay class="quick-video">
-          Video not supported.
-        </video>
+        {#key filePath}
+        <VideoPreview src={assetUrl} autoplay={true} class="quick-video" />
+        {/key}
       {:else if previewType === "audio"}
+        {#key filePath}
         <AudioPlayer src={assetUrl} fileName={metadata?.name ?? ""} autoplay={true} />
+        {/key}
       {:else if previewType === "pdf"}
-        <iframe src={assetUrl} title="PDF Preview" class="quick-pdf"></iframe>
+        {#key filePath}
+        <PdfPreview src={assetUrl} class="quick-pdf" />
+        {/key}
       {:else if previewType === "document"}
         <div class="quick-doc">
           <div class="quick-doc-icon">{getDocIcon(metadata?.extension ?? "")}</div>
@@ -148,7 +214,9 @@
           <button class="quick-open-btn" onclick={openWithSystem}>Open with default app</button>
         </div>
       {:else if previewType === "text" && textContent}
+        {#key filePath}
         <pre class="quick-text"><code>{textContent.content}</code></pre>
+        {/key}
       {:else}
         <div class="quick-center dim">No preview available</div>
       {/if}
@@ -178,7 +246,8 @@
 
   .quick-panel {
     width: 70vw;
-    max-width: 800px;
+    max-width: 900px;
+    height: 80vh;
     max-height: 80vh;
     background: var(--surface-high);
     border: 1px solid var(--border);
@@ -221,7 +290,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 200px;
+    min-height: 0;
+  }
+
+  .quick-body-pdf {
+    overflow: hidden;
+    align-items: stretch;
   }
 
   .quick-center {
@@ -261,12 +335,7 @@
     max-height: 70vh;
   }
 
-  .quick-pdf {
-    width: 100%;
-    height: 70vh;
-    border: none;
-    background: var(--bg);
-  }
+  /* .quick-pdf sizing is handled inside PdfPreview.svelte */
 
   .quick-doc {
     display: flex;

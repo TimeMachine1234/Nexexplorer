@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onDestroy } from "svelte";
+
   interface Props {
     src: string;
     fileName: string;
@@ -8,6 +10,16 @@
   let { src, fileName, autoplay = false }: Props = $props();
 
   let audioEl: HTMLAudioElement | undefined = $state();
+
+  function audioCleanup(node: HTMLAudioElement) {
+    return {
+      destroy() {
+        node.pause();
+        node.removeAttribute("src");
+        node.load();
+      }
+    };
+  }
   let playing = $state(false);
   let currentTime = $state(0);
   let duration = $state(0);
@@ -89,6 +101,7 @@
 
 <div class="audio-player">
   <audio
+    use:audioCleanup
     bind:this={audioEl}
     {src}
     ontimeupdate={onTimeUpdate}

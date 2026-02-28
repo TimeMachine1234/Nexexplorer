@@ -1,8 +1,16 @@
 <script lang="ts">
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { layout, toggleDualPane, toggleHiddenFiles } from "../../stores/panes";
+  import { invoke } from "@tauri-apps/api/core";
+  import Button from "../common/Button.svelte";
 
   const appWindow = getCurrentWindow();
+  let isFullscreen = false;
+  let showSnapMenu = false;
+  let snapMenuTimeout: ReturnType<typeof setTimeout>;
+  let snapBtnEl: HTMLButtonElement;
+  let snapMenuLeft = 0;
+  let snapMenuTop = 30;
 
   async function handleMinimize() {
     await appWindow.minimize();
@@ -16,6 +24,46 @@
     await appWindow.close();
   }
 
+  async function handleFullscreen() {
+    isFullscreen = await invoke<boolean>('toggle_fullscreen');
+  }
+
+  function handleDoubleClick(e: MouseEvent) {
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('.snap-container')) return;
+    handleFullscreen();
+  }
+
+  async function handleSnapLeft() {
+    await invoke('snap_left');
+    showSnapMenu = false;
+  }
+
+  async function handleSnapRight() {
+    await invoke('snap_right');
+    showSnapMenu = false;
+  }
+
+  function handleSnapBtnMouseEnter() {
+    clearTimeout(snapMenuTimeout);
+    if (snapBtnEl) {
+      const rect = snapBtnEl.getBoundingClientRect();
+      snapMenuLeft = rect.left;
+      snapMenuTop = rect.bottom + 2;
+    }
+    showSnapMenu = true;
+  }
+
+  function handleSnapMenuMouseEnter() {
+    clearTimeout(snapMenuTimeout);
+  }
+
+  function handleSnapHide() {
+    snapMenuTimeout = setTimeout(() => {
+      showSnapMenu = false;
+    }, 150);
+  }
+
   function handleDragStart(e: MouseEvent) {
     if ((e.target as HTMLElement).closest("button")) return;
     appWindow.startDragging();
@@ -23,25 +71,32 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="titlebar" onmousedown={handleDragStart}>
+<div class="titlebar" onmousedown={handleDragStart} ondblclick={handleDoubleClick}>
   <div class="toolbar-actions">
-    <button
-      class="toolbar-btn"
-      onclick={() => toggleDualPane()}
-      title="Toggle Split Pane (Ctrl+\)"
-    >
+    <Button onclick={() => toggleDualPane()} title="Toggle Split Pane (Ctrl+\)">
       {$layout.dualPane ? "▣ Single" : "◫ Split"}
-    </button>
-    <button
-      class="toolbar-btn"
-      onclick={() => toggleHiddenFiles()}
-      title="Toggle Hidden Files (Ctrl+H)"
-    >
+    </Button>
+    <Button onclick={() => toggleHiddenFiles()} title="Toggle Hidden Files (Ctrl+H)">
       {$layout.showHiddenFiles ? "◉ Hidden" : "○ Hidden"}
-    </button>
+    </Button>
   </div>
   <div class="drag-region"></div>
   <div class="window-controls">
+    <button
+      bind:this={snapBtnEl}
+      class="win-btn snap"
+      title="Snap Layout"
+      onmouseenter={handleSnapBtnMouseEnter}
+      onmouseleave={handleSnapHide}
+    >
+      <svg width="12" height="12" viewBox="0 0 12 12">
+        <rect x="0" y="0" width="5" height="5" fill="currentColor" />
+        <rect x="7" y="0" width="5" height="5" fill="currentColor" />
+        <rect x="0" y="7" width="5" height="5" fill="currentColor" />
+        <rect x="7" y="7" width="5" height="5" fill="currentColor" />
+      </svg>
+    </button>
+
     <button class="win-btn minimize" onclick={handleMinimize} title="Minimize">
       <svg width="10" height="1" viewBox="0 0 10 1">
         <rect width="10" height="1" fill="currentColor" />
@@ -61,6 +116,29 @@
   </div>
 </div>
 
+{#if showSnapMenu}
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div
+    class="snap-menu"
+    style="left: {snapMenuLeft}px; top: {snapMenuTop}px;"
+    onmouseenter={handleSnapMenuMouseEnter}
+    onmouseleave={handleSnapHide}
+  >
+    <button class="snap-option" onclick={handleSnapLeft} title="Snap Left (half screen)">
+      <svg width="28" height="20" viewBox="0 0 28 20">
+        <rect x="0" y="0" width="12" height="20" rx="1" fill="currentColor" opacity="0.9" />
+        <rect x="14" y="0" width="14" height="20" rx="1" fill="currentColor" opacity="0.25" />
+      </svg>
+    </button>
+    <button class="snap-option" onclick={handleSnapRight} title="Snap Right (half screen)">
+      <svg width="28" height="20" viewBox="0 0 28 20">
+        <rect x="0" y="0" width="12" height="20" rx="1" fill="currentColor" opacity="0.25" />
+        <rect x="14" y="0" width="14" height="20" rx="1" fill="currentColor" opacity="0.9" />
+      </svg>
+    </button>
+  </div>
+{/if}
+
 <style>
   .titlebar {
     display: flex;
@@ -79,25 +157,6 @@
     gap: 2px;
     padding: 0 6px;
     flex-shrink: 0;
-  }
-
-  .toolbar-btn {
-    height: 22px;
-    padding: 0 8px;
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    background: var(--surface);
-    color: var(--text-muted);
-    font-size: 11px;
-    font-family: inherit;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background-color 0.1s, color 0.1s;
-  }
-
-  .toolbar-btn:hover {
-    background: var(--surface-high);
-    color: var(--text);
   }
 
   .drag-region {
@@ -131,6 +190,38 @@
 
   .win-btn.close:hover {
     background-color: #e81123;
+    color: white;
+  }
+
+  .snap-menu {
+    position: fixed;
+    background-color: var(--surface-high);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px;
+    display: flex;
+    gap: 6px;
+    z-index: 9999;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+
+  .snap-option {
+    width: 52px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.1s;
+  }
+
+  .snap-option:hover {
+    background-color: var(--accent, #3b82f6);
+    border-color: var(--accent, #3b82f6);
     color: white;
   }
 </style>

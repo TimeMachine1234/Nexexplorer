@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { TabState } from "../../stores/panes";
   import { getCurrentWindow } from "@tauri-apps/api/window";
+  import { invoke } from "@tauri-apps/api/core";
+  import { onMount, onDestroy } from "svelte";
 
   interface Props {
     tabs: TabState[];
@@ -14,6 +16,35 @@
   let { tabs, activeTabId, showWindowControls = false, onSwitchTab, onCloseTab, onNewTab }: Props = $props();
 
   const appWindow = getCurrentWindow();
+  let maxBtnEl: HTMLButtonElement = $state()!;
+  let resizeObserver: ResizeObserver;
+
+  function syncMaxBtnRect() {
+    if (!maxBtnEl) return;
+    const rect = maxBtnEl.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    invoke('set_maximize_button_rect', {
+      left: Math.round(rect.left * dpr),
+      top: Math.round(rect.top * dpr),
+      right: Math.round(rect.right * dpr),
+      bottom: Math.round(rect.bottom * dpr),
+    }).catch(() => {});
+  }
+
+  onMount(() => {
+    if (showWindowControls) {
+      resizeObserver = new ResizeObserver(() => syncMaxBtnRect());
+      if (maxBtnEl) resizeObserver.observe(maxBtnEl);
+      window.addEventListener('resize', syncMaxBtnRect);
+      // Give layout a moment to settle
+      setTimeout(syncMaxBtnRect, 100);
+    }
+  });
+
+  onDestroy(() => {
+    if (resizeObserver) resizeObserver.disconnect();
+    window.removeEventListener('resize', syncMaxBtnRect);
+  });
 
   function getTabLabel(tab: TabState): string {
     const parts = tab.path.replace(/\\$/, "").split("\\");
@@ -21,15 +52,16 @@
   }
 
   function handleMiddleClick(e: MouseEvent, tabId: string) {
-    if (e.button === 1) {
-      e.preventDefault();
-      onCloseTab(tabId);
-    }
+    if (e.button === 1) { e.preventDefault(); onCloseTab(tabId); }
   }
 
   function handleDragStart(e: MouseEvent) {
     if ((e.target as HTMLElement).closest("button, .tab")) return;
     appWindow.startDragging();
+  }
+
+  function handleDragSpacerDblClick() {
+    invoke('toggle_fullscreen').catch(() => appWindow.toggleMaximize());
   }
 </script>
 
@@ -53,27 +85,29 @@
             class="tab-close"
             onclick={(e) => { e.stopPropagation(); onCloseTab(tab.id); }}
             title="Close tab"
-          >
-            ✕
-          </button>
+          >✕</button>
         {/if}
       </div>
     {/each}
   </div>
-  <button class="tab-new" onclick={onNewTab} title="New tab (Ctrl+T)">
-    +
-  </button>
-  <div class="drag-spacer"></div>
+  <button class="tab-new" onclick={onNewTab} title="New tab (Ctrl+T)">+</button>
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="drag-spacer" ondblclick={handleDragSpacerDblClick}></div>
   {#if showWindowControls}
     <div class="window-controls">
       <button class="win-btn" onclick={() => appWindow.minimize()} title="Minimize">
-        <svg width="10" height="1" viewBox="0 0 10 1"><rect width="10" height="1" fill="currentColor" /></svg>
+        <svg width="10" height="1" viewBox="0 0 10 1"><rect width="10" height="1" fill="currentColor"/></svg>
       </button>
-      <button class="win-btn" onclick={() => appWindow.toggleMaximize()} title="Maximize">
-        <svg width="10" height="10" viewBox="0 0 10 10"><rect width="10" height="10" fill="none" stroke="currentColor" stroke-width="1" /></svg>
+      <button
+        bind:this={maxBtnEl}
+        class="win-btn maximize"
+        onclick={() => appWindow.toggleMaximize()}
+        title="Maximize"
+      >
+        <svg width="10" height="10" viewBox="0 0 10 10"><rect width="10" height="10" fill="none" stroke="currentColor" stroke-width="1"/></svg>
       </button>
       <button class="win-btn close" onclick={() => appWindow.close()} title="Close">
-        <svg width="10" height="10" viewBox="0 0 10 10"><line x1="0" y1="0" x2="10" y2="10" stroke="currentColor" stroke-width="1.2" /><line x1="10" y1="0" x2="0" y2="10" stroke="currentColor" stroke-width="1.2" /></svg>
+        <svg width="10" height="10" viewBox="0 0 10 10"><line x1="0" y1="0" x2="10" y2="10" stroke="currentColor" stroke-width="1.2"/><line x1="10" y1="0" x2="0" y2="10" stroke="currentColor" stroke-width="1.2"/></svg>
       </button>
     </div>
   {/if}
@@ -101,9 +135,7 @@
     min-width: 0;
   }
 
-  .tabs-scroll::-webkit-scrollbar {
-    height: 0;
-  }
+  .tabs-scroll::-webkit-scrollbar { height: 0; }
 
   .tab {
     display: flex;
@@ -125,10 +157,7 @@
     flex-shrink: 0;
   }
 
-  .tab:hover {
-    background: var(--surface-high);
-    color: var(--text);
-  }
+  .tab:hover { background: var(--surface-high); color: var(--text); }
 
   .tab.active {
     background: var(--surface-high);
@@ -160,10 +189,7 @@
     padding: 0;
   }
 
-  .tab-close:hover {
-    background: var(--border);
-    color: var(--text);
-  }
+  .tab-close:hover { background: var(--border); color: var(--text); }
 
   .tab-new {
     width: 24px;
@@ -181,21 +207,11 @@
     font-family: inherit;
   }
 
-  .tab-new:hover {
-    background: var(--surface-high);
-    color: var(--text);
-  }
+  .tab-new:hover { background: var(--surface-high); color: var(--text); }
 
-  .drag-spacer {
-    flex: 1;
-    height: 100%;
-  }
+  .drag-spacer { flex: 1; height: 100%; }
 
-  .window-controls {
-    display: flex;
-    height: 100%;
-    flex-shrink: 0;
-  }
+  .window-controls { display: flex; height: 100%; flex-shrink: 0; }
 
   .win-btn {
     width: 46px;
@@ -210,13 +226,6 @@
     transition: background-color 0.1s;
   }
 
-  .win-btn:hover {
-    background-color: var(--surface-high);
-    color: var(--text);
-  }
-
-  .win-btn.close:hover {
-    background-color: #e81123;
-    color: white;
-  }
+  .win-btn:hover { background-color: var(--surface-high); color: var(--text); }
+  .win-btn.close:hover { background-color: #e81123; color: white; }
 </style>

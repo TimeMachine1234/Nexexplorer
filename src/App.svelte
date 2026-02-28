@@ -17,7 +17,7 @@
     setActivePane,
   } from "./lib/stores/panes";
   import { setupTransferListener, transfers } from "./lib/stores/transfers";
-  import { selectedFileForPreview } from "./lib/stores/preview";
+  import { selectedFileForPreview, debouncedPreviewPath } from "./lib/stores/preview";
 
   let paneManager: PaneManager | undefined = $state();
   let showTransferPanel = $state(false);
@@ -36,10 +36,10 @@
     }
   });
 
-  // Auto-update preview panel when selection changes
+  // Auto-update preview panel when selection changes (debounced to avoid memory leaks)
   $effect(() => {
     if (showPreviewPanel) {
-      previewFilePath = $selectedFileForPreview;
+      previewFilePath = $debouncedPreviewPath;
     }
   });
 

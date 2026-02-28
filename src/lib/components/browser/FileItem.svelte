@@ -1,4 +1,6 @@
 <script lang="ts">
+  import FileIcon from "../common/FileIcon.svelte";
+
   interface FileEntry {
     name: string;
     is_dir: boolean;
@@ -42,25 +44,6 @@
     } catch {
       return "";
     }
-  }
-
-  function getIcon(): string {
-    if (entry.is_dir) return "📁";
-    const ext = entry.extension.toLowerCase();
-    const iconMap: Record<string, string> = {
-      ".txt": "📄", ".md": "📝", ".pdf": "📕",
-      ".doc": "📘", ".docx": "📘", ".xls": "📊", ".xlsx": "📊",
-      ".ppt": "📙", ".pptx": "📙",
-      ".jpg": "🖼️", ".jpeg": "🖼️", ".png": "🖼️", ".gif": "🖼️",
-      ".bmp": "🖼️", ".svg": "🖼️", ".webp": "🖼️",
-      ".mp3": "🎵", ".wav": "🎵", ".flac": "🎵", ".aac": "🎵",
-      ".mp4": "🎬", ".mkv": "🎬", ".avi": "🎬", ".mov": "🎬",
-      ".zip": "📦", ".rar": "📦", ".7z": "📦", ".tar": "📦", ".gz": "📦",
-      ".exe": "⚙️", ".msi": "⚙️",
-      ".js": "📜", ".ts": "📜", ".py": "📜", ".rs": "📜",
-      ".html": "🌐", ".css": "🎨", ".json": "📋",
-    };
-    return iconMap[ext] || "📄";
   }
 
   function getTypeName(): string {
@@ -115,7 +98,7 @@
   role="row"
   tabindex="0"
 >
-  <div class="col-icon">{getIcon()}</div>
+  <div class="col-icon"><FileIcon extension={entry.extension} isDir={entry.is_dir} /></div>
   <div class="col-name" class:is-dir={entry.is_dir}>{entry.name}</div>
   <div class="col-size">{formatSize(entry.size)}</div>
   <div class="col-modified">{formatDate(entry.modified)}</div>

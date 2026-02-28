@@ -2231,6 +2231,7 @@ dependencies = [
  "lazy_static",
  "mimalloc",
  "notify",
+ "raw-window-handle",
  "rusqlite",
  "serde",
  "serde_json",
@@ -2239,6 +2240,7 @@ dependencies = [
  "tauri-plugin-opener",
  "trash",
  "walkdir",
+ "windows-sys 0.48.0",
  "zip",
 ]
 

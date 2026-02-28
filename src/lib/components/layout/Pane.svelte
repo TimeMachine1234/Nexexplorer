@@ -5,6 +5,10 @@
   import FileList from "../browser/FileList.svelte";
   import FilterBar from "../browser/FilterBar.svelte";
   import ContextMenu from "../common/ContextMenu.svelte";
+  import Button from "../common/Button.svelte";
+  import Dialog from "../common/Dialog.svelte";
+  import TextInput from "../common/TextInput.svelte";
+  import EmptyState from "../common/EmptyState.svelte";
   import {
     type PaneState,
     type TabState,
@@ -548,17 +552,13 @@
       onNewTab={handleNewTab}
     />
     <div class="pane-toolbar">
-      <button class="ptool-btn" onclick={() => addPane()} title="Add Pane">
-        + Pane
-      </button>
+      <Button onclick={() => addPane()} title="Add Pane">+ Pane</Button>
       {#if paneCount > 1}
-        <button class="ptool-btn" onclick={() => removePane(paneId)} title="Close this pane">
-          ✕ Pane
-        </button>
+        <Button onclick={() => removePane(paneId)} title="Close this pane">✕ Pane</Button>
       {/if}
-      <button class="ptool-btn" onclick={() => toggleHiddenFiles()} title="Toggle Hidden Files (Ctrl+H)">
+      <Button onclick={() => toggleHiddenFiles()} title="Toggle Hidden Files (Ctrl+H)">
         {showHidden ? "◉ Hidden" : "○ Hidden"}
-      </button>
+      </Button>
       <div class="ptool-spacer"></div>
     </div>
     <BreadcrumbBar
@@ -580,9 +580,9 @@
       ondrop={handleDrop}
     >
       {#if tabData.isLoading}
-        <div class="loading">Loading...</div>
+        <EmptyState type="loading" />
       {:else if tabData.errorMessage}
-        <div class="error">{tabData.errorMessage}</div>
+        <EmptyState type="error" message={tabData.errorMessage} />
       {:else}
         <FileList
           bind:this={fileListRef}
@@ -602,23 +602,19 @@
       {/if}
     </div>
     {#if renamingPath}
-      <div class="rename-overlay">
-        <div class="rename-dialog">
-          <label class="rename-label">Rename to:</label>
-          <!-- svelte-ignore a11y_autofocus -->
-          <input
-            class="rename-input"
-            type="text"
+      <Dialog title="Rename to:" onClose={cancelRename}>
+        {#snippet children()}
+          <TextInput
             bind:value={renameValue}
-            onkeydown={(e) => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") cancelRename(); }}
             autofocus
+            onkeydown={(e) => { if (e.key === "Enter") commitRename(); if (e.key === "Escape") cancelRename(); }}
           />
-          <div class="rename-actions">
-            <button class="rename-btn primary" onclick={commitRename}>Rename</button>
-            <button class="rename-btn" onclick={cancelRename}>Cancel</button>
-          </div>
-        </div>
-      </div>
+        {/snippet}
+        {#snippet actions()}
+          <Button variant="primary" size="md" onclick={commitRename}>Rename</Button>
+          <Button size="md" onclick={cancelRename}>Cancel</Button>
+        {/snippet}
+      </Dialog>
     {/if}
     <FilterBar
       bind:this={filterBar}
@@ -668,25 +664,6 @@
     flex-shrink: 0;
   }
 
-  .ptool-btn {
-    height: 20px;
-    padding: 0 7px;
-    border: 1px solid var(--border);
-    border-radius: 3px;
-    background: var(--surface);
-    color: var(--text-muted);
-    font-size: 11px;
-    font-family: inherit;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background-color 0.1s, color 0.1s;
-  }
-
-  .ptool-btn:hover {
-    background: var(--surface-high);
-    color: var(--text);
-  }
-
   .ptool-spacer {
     flex: 1;
   }
@@ -703,99 +680,4 @@
     background-color: rgba(0, 180, 216, 0.05);
   }
 
-  .loading,
-  .error {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    font-size: 14px;
-  }
-
-  .loading {
-    color: var(--text-muted);
-  }
-
-  .error {
-    color: var(--danger);
-    padding: 20px;
-    text-align: center;
-  }
-
-  .rename-overlay {
-    position: absolute;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.3);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 100;
-  }
-
-  .rename-dialog {
-    background: var(--surface-high);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 12px 16px;
-    min-width: 280px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  }
-
-  .rename-label {
-    display: block;
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-bottom: 6px;
-  }
-
-  .rename-input {
-    width: 100%;
-    height: 28px;
-    padding: 0 8px;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    background: var(--bg);
-    color: var(--text);
-    font-size: 13px;
-    font-family: inherit;
-    outline: none;
-    box-sizing: border-box;
-  }
-
-  .rename-input:focus {
-    border-color: var(--accent);
-  }
-
-  .rename-actions {
-    display: flex;
-    gap: 6px;
-    margin-top: 10px;
-    justify-content: flex-end;
-  }
-
-  .rename-btn {
-    height: 26px;
-    padding: 0 12px;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    background: var(--surface);
-    color: var(--text);
-    font-size: 12px;
-    font-family: inherit;
-    cursor: pointer;
-  }
-
-  .rename-btn:hover {
-    background: var(--surface-high);
-  }
-
-  .rename-btn.primary {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: white;
-  }
-
-  .rename-btn.primary:hover {
-    opacity: 0.9;
-  }
 </style>

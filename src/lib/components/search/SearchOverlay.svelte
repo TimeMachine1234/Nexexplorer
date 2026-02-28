@@ -8,6 +8,8 @@
     size: number;
     modified: number;
     extension: string;
+    rank: number;
+    content_snippet: string | null;
   }
 
   interface IndexStatus {
@@ -15,6 +17,13 @@
     total_files: number;
     indexed_paths: string[];
     last_updated: number | null;
+    content_indexed: number;
+  }
+
+  interface SearchHistoryEntry {
+    query: string;
+    timestamp: number;
+    result_count: number;
   }
 
   interface Props {
@@ -31,6 +40,7 @@
   let searchTime = $state(0);
   let totalResults = $state(0);
   let indexStatus: IndexStatus | null = $state(null);
+  let searchHistory: SearchHistoryEntry[] = $state([]);
 
   // Filters
   let showFilters = $state(false);
@@ -45,6 +55,7 @@
 
   $effect(() => {
     loadIndexStatus();
+    loadSearchHistory();
     // Focus input on mount
     setTimeout(() => inputEl?.focus(), 50);
   });
@@ -55,9 +66,15 @@
     } catch { /* ignore */ }
   }
 
+  async function loadSearchHistory() {
+    try {
+      searchHistory = await invoke("get_search_history");
+    } catch { /* ignore */ }
+  }
+
   function onInput() {
     if (searchTimeout) clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => doSearch(), 80);
+    searchTimeout = setTimeout(() => doSearch(), 400);
   }
 
   async function doSearch() {
@@ -79,7 +96,7 @@
 
       const searchQuery: any = {
         query: q,
-        limit: 200,
+        limit: 50,
       };
 
       if (scopeFilter.trim()) searchQuery.scope = scopeFilter.trim();
@@ -150,6 +167,9 @@
   }
 
   function openResult(result: SearchResult) {
+    // Record file open for frecency scoring
+    invoke("record_file_open", { path: result.path }).catch(() => {});
+
     if (result.is_dir) {
       onNavigate(result.path);
     } else {
@@ -160,6 +180,20 @@
       }
     }
     onClose();
+  }
+
+  function useHistoryQuery(entry: SearchHistoryEntry) {
+    query = entry.query;
+    doSearch();
+  }
+
+  function formatTimeAgo(epoch: number): string {
+    const now = Date.now() / 1000;
+    const diff = now - epoch;
+    if (diff < 60) return "just now";
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
   }
 
   function formatBytes(bytes: number): string {
@@ -198,10 +232,20 @@
     return icons[ext] || "📄";
   }
 
+  let statusPollInterval: ReturnType<typeof setInterval> | null = null;
+
   async function startIndex() {
     try {
       await invoke("start_indexing", { paths: ["C:\\"] });
       await invoke("start_file_watcher", { paths: ["C:\\"] });
+      // Poll status every 2 seconds while indexing
+      statusPollInterval = setInterval(async () => {
+        await loadIndexStatus();
+        if (indexStatus && !indexStatus.indexing) {
+          if (statusPollInterval) clearInterval(statusPollInterval);
+          statusPollInterval = null;
+        }
+      }, 2000);
       setTimeout(loadIndexStatus, 500);
     } catch (e: any) {
       console.error("Failed to start indexing:", e);
@@ -223,6 +267,16 @@
 
   function escapeHtml(s: string): string {
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function formatSnippet(snippet: string): string {
+    // The Rust backend uses >>> and <<< as highlight markers from FTS5 snippet()
+    // First escape HTML, then convert markers to <mark> tags
+    let safe = escapeHtml(snippet);
+    safe = safe.replace(/&gt;&gt;&gt;/g, "<mark>").replace(/&lt;&lt;&lt;/g, "</mark>");
+    // Trim to a single line and limit length
+    const lines = safe.split("\n").filter(l => l.trim()).slice(0, 2);
+    return lines.join(" ").substring(0, 200);
   }
 </script>
 
@@ -287,9 +341,34 @@
           {:else if indexStatus.total_files > 0}
             <div class="status-line">
               <span class="status-check">✓</span>
-              <span>{indexStatus.total_files.toLocaleString()} files indexed</span>
+              <span>{indexStatus.total_files.toLocaleString()} files indexed{indexStatus.content_indexed > 0 ? ` · ${indexStatus.content_indexed.toLocaleString()} with content` : ''}</span>
             </div>
-            <div class="status-hint">Type to search across all indexed files</div>
+            <div class="syntax-hints">
+              <div class="syntax-title">Smart search syntax</div>
+              <div class="syntax-grid">
+                <span class="syntax-key">ext:rs</span><span class="syntax-desc">by extension</span>
+                <span class="syntax-key">type:image</span><span class="syntax-desc">by file type</span>
+                <span class="syntax-key">size:&gt;100mb</span><span class="syntax-desc">by size</span>
+                <span class="syntax-key">modified:today</span><span class="syntax-desc">by date</span>
+                <span class="syntax-key">created:2024</span><span class="syntax-desc">by year</span>
+                <span class="syntax-key">in:C:\Users</span><span class="syntax-desc">by path</span>
+              </div>
+              <div class="syntax-note">Supports fuzzy matching — type "srchov" to find SearchOverlay</div>
+            </div>
+            {#if searchHistory.length > 0}
+              <div class="history-section">
+                <div class="history-title">Recent searches</div>
+                {#each searchHistory.slice(0, 5) as entry}
+                  <!-- svelte-ignore a11y_click_events_have_key_events -->
+                  <!-- svelte-ignore a11y_no_static_element_interactions -->
+                  <div class="history-item" onclick={() => useHistoryQuery(entry)}>
+                    <svg class="history-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
+                    <span class="history-query">{entry.query}</span>
+                    <span class="history-meta">{entry.result_count} results · {formatTimeAgo(entry.timestamp)}</span>
+                  </div>
+                {/each}
+              </div>
+            {/if}
           {:else}
             <div class="status-empty">
               <div class="status-empty-text">No files indexed yet</div>
@@ -314,6 +393,9 @@
             <div class="result-info">
               <div class="result-name">{@html highlightName(result.name, query)}</div>
               <div class="result-path">{getParentPath(result.path)}</div>
+              {#if result.content_snippet}
+                <div class="result-snippet">{@html formatSnippet(result.content_snippet)}</div>
+              {/if}
             </div>
             <div class="result-meta">
               {#if !result.is_dir}
@@ -639,5 +721,110 @@
   .search-timing {
     color: var(--text-muted);
     font-variant-numeric: tabular-nums;
+  }
+
+  .syntax-hints {
+    margin-top: 12px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+
+  .syntax-title {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+  }
+
+  .syntax-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 12px;
+    font-size: 11px;
+  }
+
+  .syntax-key {
+    color: var(--accent, #7c8aff);
+    font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+    font-size: 11px;
+  }
+
+  .syntax-desc {
+    color: var(--text-dim);
+  }
+
+  .result-snippet {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
+    line-height: 1.4;
+  }
+
+  .result-snippet :global(mark) {
+    background: rgba(250, 204, 21, 0.25);
+    color: var(--text);
+    border-radius: 2px;
+    padding: 0 1px;
+  }
+
+  .syntax-note {
+    margin-top: 8px;
+    font-size: 10px;
+    color: var(--text-dim);
+    opacity: 0.7;
+    font-style: italic;
+  }
+
+  .history-section {
+    margin-top: 12px;
+  }
+
+  .history-title {
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.05s;
+  }
+
+  .history-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  .history-icon {
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+
+  .history-query {
+    font-size: 12px;
+    color: var(--text);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .history-meta {
+    font-size: 10px;
+    color: var(--text-dim);
+    flex-shrink: 0;
   }
 </style>

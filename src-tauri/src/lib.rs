@@ -1,6 +1,8 @@
 mod commands;
+mod win32_snap;
 
 use mimalloc::MiMalloc;
+use tauri::Manager;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -9,6 +11,12 @@ static GLOBAL: MiMalloc = MiMalloc;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .setup(|app| {
+            if let Some(win) = app.get_webview_window("main") {
+                win32_snap::install_snap_hook(&win);
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::fs::list_directory,
             commands::fs::list_drives,
@@ -35,6 +43,15 @@ pub fn run() {
             commands::search::search_files,
             commands::search::start_file_watcher,
             commands::search::clear_index,
+            commands::search::record_file_open,
+            commands::search::get_search_history,
+            commands::search::clear_search_history,
+            commands::window::toggle_fullscreen,
+            commands::window::snap_left,
+            commands::window::snap_right,
+            commands::window::is_fullscreen,
+            commands::window::snap_quarter,
+            win32_snap::set_maximize_button_rect,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

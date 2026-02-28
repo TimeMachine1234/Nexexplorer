@@ -76,6 +76,24 @@ Get-Process | Where-Object {$_.Name -like "*nexexplorer*"} | Select-Object Name,
 
 ---
 
+## 💿 SSD/NVMe Protection Rules — Non-Negotiable
+
+SSDs and NVMe drives have finite write cycles. A bad indexer destroys drives. Follow these always:
+
+| Rule | Why |
+|------|-----|
+| Check timestamp before indexing | Never rewrite unchanged files |
+| Batch 100-500 writes per transaction | 500x less wear than writing one at a time |
+| PRAGMA journal_mode=WAL | Sequential writes, not random — gentler on SSD |
+| 3 second debounce on file watcher | Ignore rapid repeated saves from apps |
+| 50ms pause every 500 files on first scan | No continuous hammering on first launch |
+| Never full re-scan after first index | Only process watcher-flagged changes |
+| Let user choose database location | Power users can put it on a secondary drive |
+
+Target: Under 5MB written per day after initial index.
+
+---
+
 ## 🖥️ System Requirements
 
 Minimum (core features work, AI is slow):
@@ -216,10 +234,73 @@ nexexplorer/
 - [ ] Folder bookmarks and favorites in sidebar
 - [ ] Recent folders list
 - [ ] Pinned folders in sidebar
-- [ ] All drives in sidebar (local, network, USB)
 - [ ] Quick access to Desktop, Documents, Downloads, Pictures
-- [ ] Network drive support
-- [ ] USB drive detection and display
+
+### DRIVES + DEVICES (Sidebar Section)
+All plugged in and connected storage shows up automatically in the sidebar. No manual setup.
+
+**Local Drives**
+- [ ] All internal HDDs and SSDs auto-detected and shown in sidebar
+- [ ] Drive label, used/free space shown under each drive
+- [ ] Visual storage bar per drive (like Windows Explorer)
+- [ ] Click drive to browse from root
+- [ ] Eject button for removable drives
+- [ ] Drive health indicator (S.M.A.R.T status if available)
+
+**Removable Storage**
+- [ ] USB flash drives auto-detected when plugged in
+- [ ] External HDDs and SSDs auto-detected
+- [ ] SD cards auto-detected
+- [ ] Toast notification when new device plugged in
+- [ ] Safe eject from sidebar right-click menu
+- [ ] Transfer files by dragging between panes — local to USB and back
+- [ ] Shows transfer speed during USB transfers
+
+**Network Drives**
+- [ ] Mapped network drives shown in sidebar
+- [ ] NAS devices auto-detected on local network
+- [ ] UNC path support (\\server\share)
+- [ ] Shows online/offline status
+- [ ] Graceful handling when network drive goes offline mid-browse
+
+**Phone via USB (MTP)**
+- [ ] Plug in Android or iPhone via USB — appears in sidebar automatically
+- [ ] Browse phone photos, videos, documents directly
+- [ ] Drag files between PC and phone like any normal folder
+- [ ] No Phone Link API needed — uses Windows MTP protocol directly
+- [ ] Shows phone name and storage used/free
+- [ ] Note: Phone Link API is closed by Microsoft — MTP is the correct approach
+
+### CLOUD STORAGE (Sidebar Section)
+Cloud folders are auto-detected from what's already installed on the user's machine. No login required inside NexExplorer — the sync apps handle that.
+
+**OneDrive**
+- [ ] Auto-detect OneDrive folder (C:\Users\[name]\OneDrive\)
+- [ ] Show in sidebar under Cloud section
+- [ ] Show sync status icons on files: ✅ synced / ☁️ cloud only / 🔄 syncing
+- [ ] Show available offline vs cloud-only files
+- [ ] Personal OneDrive and OneDrive for Business both detected
+
+**Google Drive**
+- [ ] Auto-detect Google Drive folder when Drive for Desktop is installed
+- [ ] Show in sidebar under Cloud section
+- [ ] Show sync status icons
+- [ ] Works with both personal and Workspace accounts
+
+**Dropbox**
+- [ ] Auto-detect Dropbox folder when Dropbox is installed
+- [ ] Show in sidebar under Cloud section
+- [ ] Show sync status icons (green checkmark / blue sync / cloud)
+
+**iCloud Drive**
+- [ ] Auto-detect iCloud Drive folder when iCloud for Windows is installed
+- [ ] Show in sidebar under Cloud section
+
+**General Cloud Rules**
+- [ ] If cloud app not installed — section not shown (no empty/broken entries)
+- [ ] Cloud folders treated exactly like local folders — full search, preview, all features work
+- [ ] Sync status read from Windows shell overlay icons via Rust
+- [ ] Never slow down the app waiting for cloud sync status — load async
 
 ### FILE BROWSING
 - [ ] List view (name, size, date, type columns)
@@ -297,14 +378,24 @@ nexexplorer/
 ### SEARCH
 - [ ] As-you-type search under 150ms
 - [ ] Search current folder or entire drive
-- [ ] Filter by: type, extension, date range, size range
-- [ ] Regex search toggle
-- [ ] Search indexed file contents
-- [ ] Search inside archives
+- [ ] SQLite FTS5 — ranked results, instant even on 1M+ files
+- [ ] Relevance ranking — most relevant files appear first
+- [ ] Prefix search — "dow" matches "Downloads"
+- [ ] Boolean queries — `invoice NOT pdf` and `vacation OR holiday`
+- [ ] Smart query syntax:
+  - [ ] `ext:rs` — filter by extension
+  - [ ] `size:>100mb` and `size:<10kb` — filter by size
+  - [ ] `modified:today` / `modified:lastweek` / `modified:2024`
+  - [ ] `created:today` / `created:2024`
+  - [ ] `type:image` / `type:video` / `type:doc` / `type:audio`
+- [ ] Content indexing — search words inside txt, md, rs, js, ts, py, html, csv
+- [ ] Content index limited to first 5KB per file
+- [ ] Toggle content indexing on/off in settings
 - [ ] Saved search presets
 - [ ] Search history
 - [ ] Results show icon, name, path, size, date
 - [ ] Click result to navigate to file
+- [ ] Indexing progress shown in status bar
 
 ### AI FEATURES
 - [ ] Natural language search (Ctrl+K) — V1 PRIORITY
@@ -427,8 +518,53 @@ Spacebar preview, side panel, image/PDF/text/video/audio, EXIF, archive peek.
 Done when: Never open an app just to check file contents.
 
 ### PHASE 6 — Search + Indexer (Days 26-33)
-Background SQLite indexer, file watcher, as-you-type search under 150ms, filters.
-Done when: Search whole drive, results appear before finishing typing.
+Three layer search system that destroys Windows Search and beats every file manager.
+
+**Layer 1 — SQLite FTS5 (Full Text Search)**
+- Replace all LIKE queries with FTS5 inverted index — same speed as Google
+- Results ranked by relevance — Notes.txt appears before Keynote.exe when searching "note"
+- Prefix search — type "down" and get "Downloads" instantly
+- Boolean queries — support `invoice NOT pdf` and `vacation OR holiday`
+- Zero extra dependency — FTS5 is built into SQLite, zero RAM impact
+
+**Layer 2 — Smart Query Syntax (Gmail-style)**
+- Parse query string in Rust before building SQL — no extra library needed
+- Supported syntax:
+  - `ext:rs struct` → Rust files with "struct" in name
+  - `size:>100mb` → files over 100MB
+  - `size:<10kb` → tiny files
+  - `modified:today` → changed today
+  - `modified:lastweek` → changed last 7 days
+  - `type:image` → all image files
+  - `type:video` → all video files
+  - `type:doc` → documents
+  - `created:2024` → created in 2024
+- Power users learn this once and never go back to clicking filter chips
+
+**Layer 3 — Content Indexing**
+- Index first 5KB of text-based files during background indexing
+- Indexed types: txt, md, rs, js, ts, py, html, css, json, xml, csv
+- Skipped: binaries, executables, files over 10MB
+- Lets you find a file when you only remember a sentence or line of code inside it
+- User can toggle off in settings
+- Increases database size slightly — typical user adds 50-100MB to index
+
+**Background Indexer — SSD/NVMe Protection Rules**
+Modern SSDs and NVMe drives have finite write cycles. A poorly built indexer can cause unnecessary wear, battery drain, and heat. These rules are non-negotiable:
+
+- WRITE ONCE POLICY — check file modified timestamp before indexing. If timestamp matches database — skip entirely. Never rewrite unchanged data.
+- BATCH WRITES — never write one file at a time. Collect 100-500 changes in memory first then write in one transaction. One transaction for 500 files = same wear as writing 1 file.
+- WAL MODE — always enable `PRAGMA journal_mode=WAL` — writes sequentially not randomly, dramatically reduces SSD wear
+- SMART WATCHER DEBOUNCE — 3 second debounce on file watcher. If a file changes 10 times in 3 seconds (app saving repeatedly) only index it once not 10 times
+- INITIAL INDEX THROTTLE — 50ms pause every 500 files during first launch scan. Prevents hammering the drive continuously. User will not notice.
+- NEVER RE-INDEX ON LAUNCH — store last full index timestamp in settings. On subsequent launches only process files the watcher flagged as changed. Never full scan again unless user requests it in settings.
+- INDEX LOCATION OPTION — let users choose where the database lives. Some users want it on a different drive to protect their main NVMe. Default is AppData, configurable in settings.
+
+Target daily writes after initial index: under 5MB/day on typical usage.
+
+**Indexing progress shown in status bar**
+
+Done when: Search whole drive with smart syntax, results appear before finishing typing, can find text inside files, drive wear is negligible.
 
 ### PHASE 7 — Bulk Rename (Days 33-38)
 Patterns, regex, live preview of all names, undo.
@@ -442,9 +578,19 @@ Done when: Natural language query → right files appear → jaw drops.
 Windows.Media.Ocr, background queue, spawn and die, text in SQLite.
 Done when: Search words inside scanned PDFs.
 
-### PHASE 10 — Power Features + File Converter (Days 55-65)
+### PHASE 10 — Power Features + File Converter + Drives + Cloud (Days 55-65)
 Command palette, full context menu, archive support, duplicate finder, storage analyzer, folder sync, built-in file converter (images via image crate, video/audio via ffmpeg sidecar, documents via pandoc).
-Done when: Power users find nothing missing. Right-click any file and convert it.
+
+Also add full drive and cloud integration:
+- All local drives, USB drives, SD cards, external HDDs auto-detected in sidebar
+- Storage bar per drive, safe eject, toast on plug in, transfer speed shown
+- Network drives, NAS devices, UNC paths with online/offline status
+- MTP phone support — plug in Android/iPhone, browse and transfer files
+- OneDrive, Google Drive, Dropbox, iCloud auto-detected from installed apps
+- Sync status icons on cloud files (synced / cloud only / syncing)
+- If cloud app not installed — section not shown
+
+Done when: Power users find nothing missing. Right-click any file and convert it. Plug in USB and it appears instantly. Cloud folders show sync status.
 
 ### PHASE 11 — Desktop Integration + Polish (Days 65-75)
 Shell context menu, default file manager option, tray, state persistence, jump list, settings, onboarding.
