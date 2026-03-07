@@ -108,3 +108,37 @@ Split into focused files to save context — load only what you need:
 - Tauri 2 API is used (`@tauri-apps/api v2`), not Tauri v1
 - Svelte 5 is used with its new runes syntax where applicable
 - TailwindCSS 4 uses the new Vite plugin (`@tailwindcss/vite`), not PostCSS config
+
+## 🧠 File Pilot Founder's Lessons (CRITICAL - Reference Always)
+**Source:** Validated by a real developer who built File Pilot, a comparable file manager. These lessons inform NexExplorer's architecture.
+
+### The 10 Core Lessons
+1. **Speed is everything** — 1M users × 1 min latency = 58 human-years wasted per day. Every millisecond compounds. Never ship slow and "optimize later."
+2. **Search ≠ Filtering** — Folder filter bar = pure in-memory Svelte filtering (zero Rust calls, zero DB). Global search (Ctrl+F) = SQLite index. Never mix the two.
+3. **Preload everything during startup** — While the OS initializes the window, preload sidebar drives, last-opened folder, pinned folders, icons in parallel. Zero loading spinners by window display.
+4. **Batch/arena allocation is the speed secret** — Rust: `Vec::with_capacity(estimated_count)`. SQLite: batch 100–500 files per transaction, never one at a time.
+5. **Windows context menu is a nightmare** — Third-party apps run their context menu code on your main thread. Solution: load shell menu on a background thread, show your fast menu first, load full menu async behind "More options" spinner.
+6. **Never do heavy logic in UI event handlers** — Queue work, process at frame boundaries. Svelte: `loading = true`, `await tick()` to repaint, then async invoke.
+7. **Minimize chrome, maximize file space** — Toolbar slim/hideable, sidebar collapsible, command palette hidden until Ctrl+P. Files should dominate the screen.
+8. **Too many options = design failure** — Each option is maintenance forever. Ship sensible defaults. Only add a setting when there's genuinely no universal right answer.
+9. **Quality justifies price** — File Pilot sold at >$9 and still repaid all debts. Don't undercut from fear. If AI features are impressive, charge a premium.
+10. **Ship it, marketing handles itself** — Zero paid ads. Hacker News front page, Scott Hanselman reviews, 100k+ downloads. A 15-second Ctrl+K AI demo video is your marketing.
+
+### Performance Checklist (Apply to Every Feature)
+- [ ] Preload aggressively during startup
+- [ ] Use `Vec::with_capacity()` everywhere in Rust
+- [ ] Batch SQLite writes (100–500 per transaction)
+- [ ] Never block UI in event handlers
+- [ ] Background-thread the Windows context menu
+- [ ] Folder filter = pure in-memory, zero Rust/DB calls
+- [ ] Minimal UI chrome
+
+### File Pilot's Gaps (Your Competitive Edge)
+- **No WebP preview** — Support it day one
+- **Context menu freezes** — He says "will never be fixed"; you can fix with async threading
+- **No AI/NLP search** — Your key differentiator
+- **No OCR, file converter, cloud integration** — All in your roadmap
+- **Still beta after 3.5 years** — You have a clear 12-phase plan
+
+### Key Validation
+File Pilot founder validated NexExplorer's tech stack (Rust, memory-conscious design, batch operations, minimal UI chrome). **Main risk: shipping slow.** Performance must be baked in from the start, not bolted on.
