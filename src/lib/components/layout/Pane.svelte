@@ -4,11 +4,13 @@
   import BreadcrumbBar from "../browser/BreadcrumbBar.svelte";
   import FileList from "../browser/FileList.svelte";
   import FilterBar from "../browser/FilterBar.svelte";
+  import FolderFilterBar from "../browser/FolderFilterBar.svelte";
   import ContextMenu from "../common/ContextMenu.svelte";
   import Button from "../common/Button.svelte";
   import Dialog from "../common/Dialog.svelte";
   import TextInput from "../common/TextInput.svelte";
   import EmptyState from "../common/EmptyState.svelte";
+  import PaneFileOps from "./PaneFileOps.svelte";
   import {
     type PaneState,
     type TabState,
@@ -28,10 +30,12 @@
     toggleSplitPane,
     toggleHiddenFiles,
   } from "../../stores/panes";
-  import { clipboard, startTransfer } from "../../stores/transfers";
+  import { clipboard } from "../../stores/transfers";
   import { selectedFileForPreview } from "../../stores/preview";
   import { get } from "svelte/store";
   import { invoke } from "@tauri-apps/api/core";
+  import { listen } from "@tauri-apps/api/event";
+  import { onDestroy } from "svelte";
 
   interface Props {
     paneId: string;
@@ -42,7 +46,9 @@
 
   let breadcrumbBar: BreadcrumbBar | undefined = $state();
   let filterBar: FilterBar | undefined = $state();
+  let folderFilterBar: FolderFilterBar | undefined = $state();
   let fileListRef: FileList | undefined = $state();
+  let fileOps: PaneFileOps | undefined = $state();
 
   // ── Local reactive state that mirrors the store ──
   // We keep local $state copies and sync them from the store via $effect.
@@ -58,6 +64,19 @@
   let contextMenu: { x: number; y: number; path: string; entry: FileEntry } | null = $state(null);
   let renamingPath: string | null = $state(null);
   let renameValue: string = $state("");
+
+  function handleFileOpsError(msg: string) {
+    const ids = getLiveTab();
+    if (!ids) return;
+    layout.update((l) => {
+      const p = l.panes.find((pp) => pp.id === ids.pId);
+      if (!p) return l;
+      const t = p.tabs.find((tt) => tt.id === ids.tId);
+      if (!t) return l;
+      t.errorMessage = msg;
+      return { ...l };
+    });
+  }
 
   // Sync from store → local state on every store change
   $effect(() => {
@@ -104,107 +123,19 @@
   }
 
   function getContextMenuItems() {
-    const items: any[] = [];
-    const hasSelection = selectedPaths.size > 0;
+    if (!fileOps) return [];
     const paths = [...selectedPaths];
-    const singleEntry = contextMenu?.entry;
-
-    if (singleEntry?.is_dir) {
-      items.push({ label: "Open", action: () => navigateTo(contextMenu!.path) });
-      items.push({ divider: true });
+    const items = fileOps.getContextMenuItems(
+      contextMenu?.entry,
+      contextMenu?.path,
+      (p) => navigateTo(p),
+    );
+    // Wire rename action into local rename state
+    const renameItem = items.find((it) => it.label === "Rename");
+    if (renameItem && paths.length === 1) {
+      renameItem.action = () => startRename(paths[0]);
     }
-
-    items.push({ label: "Copy", shortcut: "Ctrl+C", action: () => doCopy() });
-    items.push({ label: "Cut", shortcut: "Ctrl+X", action: () => doCut() });
-
-    const cb = get(clipboard);
-    if (cb) {
-      items.push({ label: "Paste", shortcut: "Ctrl+V", action: () => doPaste() });
-    }
-
-    items.push({ divider: true });
-
-    if (hasSelection && paths.length === 1) {
-      items.push({ label: "Rename", shortcut: "F2", action: () => startRename(paths[0]) });
-    }
-
-    items.push({ label: "Delete", shortcut: "Del", action: () => doDelete(false), danger: true });
-    items.push({ label: "Delete Permanently", shortcut: "Shift+Del", action: () => doDelete(true), danger: true });
-
-    items.push({ divider: true });
-    items.push({ label: "New Folder", shortcut: "Ctrl+Shift+N", action: () => doNewFolder() });
-    items.push({ label: "New File", shortcut: "Ctrl+Shift+F", action: () => doNewFile() });
-
     return items;
-  }
-
-  // ── File operations ──
-
-  function doCopy() {
-    if (selectedPaths.size === 0) return;
-    clipboard.set({ op: "copy", paths: [...selectedPaths] });
-  }
-
-  function doCut() {
-    if (selectedPaths.size === 0) return;
-    clipboard.set({ op: "cut", paths: [...selectedPaths] });
-  }
-
-  async function doPaste() {
-    const cb = get(clipboard);
-    if (!cb) return;
-    const ids = getLiveTab();
-    if (!ids) return;
-    const l = get(layout);
-    const p = l.panes.find((pp) => pp.id === ids.pId);
-    if (!p) return;
-    const t = p.tabs.find((tt) => tt.id === ids.tId);
-    if (!t) return;
-
-    const dest = t.path;
-    const op = cb.op === "cut" ? "Move" as const : "Copy" as const;
-
-    try {
-      await startTransfer(op, cb.paths, dest, "Rename", true);
-      if (cb.op === "cut") clipboard.set(null);
-      // Refresh after a short delay to let the transfer start
-      setTimeout(() => navigateTo(dest, false), 500);
-    } catch (err: any) {
-      layout.update((l) => {
-        const p = l.panes.find((pp) => pp.id === ids.pId);
-        if (!p) return l;
-        const t = p.tabs.find((tt) => tt.id === ids.tId);
-        if (!t) return l;
-        t.errorMessage = `Paste failed: ${err}`;
-        return { ...l };
-      });
-    }
-  }
-
-  async function doDelete(permanent: boolean) {
-    if (selectedPaths.size === 0) return;
-    const paths = [...selectedPaths];
-
-    if (permanent) {
-      const ok = confirm(`Permanently delete ${paths.length} item(s)? This cannot be undone.`);
-      if (!ok) return;
-    }
-
-    try {
-      await invoke("delete_items", { paths, permanent });
-      selectedPaths = new Set();
-      const ids = getLiveTab();
-      if (ids) {
-        const l = get(layout);
-        const p = l.panes.find((pp) => pp.id === ids.pId);
-        if (p) {
-          const t = p.tabs.find((tt) => tt.id === ids.tId);
-          if (t) navigateTo(t.path, false);
-        }
-      }
-    } catch (err: any) {
-      alert(`Delete failed: ${err}`);
-    }
   }
 
   function startRename(path: string) {
@@ -214,82 +145,22 @@
   }
 
   async function commitRename() {
-    if (!renamingPath || !renameValue.trim()) {
-      renamingPath = null;
-      return;
-    }
-    try {
-      await invoke("rename_item", { path: renamingPath, newName: renameValue.trim() });
-      renamingPath = null;
-      renameValue = "";
-      const ids = getLiveTab();
-      if (ids) {
-        const l = get(layout);
-        const p = l.panes.find((pp) => pp.id === ids.pId);
-        if (p) {
-          const t = p.tabs.find((tt) => tt.id === ids.tId);
-          if (t) navigateTo(t.path, false);
-        }
-      }
-    } catch (err: any) {
-      alert(`Rename failed: ${err}`);
-      renamingPath = null;
-    }
+    if (!renamingPath || !renameValue.trim()) { renamingPath = null; return; }
+    const ok = await fileOps?.doRename(renamingPath, renameValue.trim());
+    if (ok !== false) { renamingPath = null; renameValue = ""; }
+    else { renamingPath = null; }
   }
 
-  function cancelRename() {
-    renamingPath = null;
-    renameValue = "";
-  }
-
-  async function doNewFolder() {
-    const ids = getLiveTab();
-    if (!ids) return;
-    const l = get(layout);
-    const p = l.panes.find((pp) => pp.id === ids.pId);
-    if (!p) return;
-    const t = p.tabs.find((tt) => tt.id === ids.tId);
-    if (!t) return;
-
-    const name = prompt("New folder name:");
-    if (!name?.trim()) return;
-
-    try {
-      await invoke("create_folder", { path: t.path, name: name.trim() });
-      navigateTo(t.path, false);
-    } catch (err: any) {
-      alert(`Failed to create folder: ${err}`);
-    }
-  }
-
-  async function doNewFile() {
-    const ids = getLiveTab();
-    if (!ids) return;
-    const l = get(layout);
-    const p = l.panes.find((pp) => pp.id === ids.pId);
-    if (!p) return;
-    const t = p.tabs.find((tt) => tt.id === ids.tId);
-    if (!t) return;
-
-    const name = prompt("New file name:");
-    if (!name?.trim()) return;
-
-    try {
-      await invoke("create_file", { path: t.path, name: name.trim() });
-      navigateTo(t.path, false);
-    } catch (err: any) {
-      alert(`Failed to create file: ${err}`);
-    }
-  }
+  function cancelRename() { renamingPath = null; renameValue = ""; }
 
   // ── Navigation ──
 
-  function getLiveTab(): { pId: string; tId: string } | null {
+  function getLiveTab(): { pId: string; tId: string; tab: TabState } | null {
     const l = get(layout);
     const p = l.panes.find((pp) => pp.id === paneId);
     if (!p) return null;
     const t = getActiveTab(p);
-    return { pId: p.id, tId: t.id };
+    return { pId: p.id, tId: t.id, tab: t };
   }
 
   async function navigateTo(path: string, addToHistory = true) {
@@ -465,30 +336,7 @@
 
     const ids = getLiveTab();
     if (!ids) return;
-    const l = get(layout);
-    const p = l.panes.find((pp) => pp.id === ids.pId);
-    if (!p) return;
-    const t = p.tabs.find((tt) => tt.id === ids.tId);
-    if (!t) return;
-
-    // Don't copy to the same directory
-    const destDir = t.path;
-    const sourceDir = sourcePath.substring(0, sourcePath.lastIndexOf("\\"));
-    if (sourceDir.replace(/\\$/, "").toLowerCase() === destDir.replace(/\\$/, "").toLowerCase()) return;
-
-    try {
-      await invoke("copy_items", { sources: [sourcePath], destination: destDir });
-      navigateTo(destDir, false);
-    } catch (err: any) {
-      layout.update((l) => {
-        const p = l.panes.find((pp) => pp.id === ids.pId);
-        if (!p) return l;
-        const t = p.tabs.find((tt) => tt.id === ids.tId);
-        if (!t) return l;
-        t.errorMessage = `Drop failed: ${err}`;
-        return { ...l };
-      });
-    }
+    await fileOps?.doDrop(sourcePath, ids.tab.path);
   }
 
   // Auto-load: when the active tab has no entries and isn't loading, fetch its directory
@@ -501,9 +349,37 @@
     }
   });
 
+  // ── Auto-refresh on filesystem changes ──
+  // Listen for fs-change events from the backend watcher and refresh if
+  // the currently viewed directory is among the changed paths.
+  let unlistenFsChange: (() => void) | null = null;
+  listen<string[]>("fs-change", (event: any) => {
+    const changedDirs = event.payload;
+    const ids = getLiveTab();
+    if (!ids) return;
+    const l = get(layout);
+    const p = l.panes.find((pp) => pp.id === ids.pId);
+    if (!p) return;
+    const t = p.tabs.find((tt) => tt.id === ids.tId);
+    if (!t) return;
+
+    const currentNorm = t.path.replace(/\\$/, "").toLowerCase();
+    const match = changedDirs.some(
+      (d) => d.replace(/\\$/, "").toLowerCase() === currentNorm
+    );
+    if (match) {
+      navigateTo(t.path, false);
+    }
+  }).then((fn) => { unlistenFsChange = fn; });
+
+  onDestroy(() => {
+    if (unlistenFsChange) unlistenFsChange();
+  });
+
   // ── Exports for parent (App.svelte keyboard shortcuts) ──
   export function focusPathBar() { breadcrumbBar?.focusPathBar(); }
   export function showFilterBar() { filterBar?.show(); }
+  export function focusFilterBar() { folderFilterBar?.focus(); }
   export function navigate(path: string) { navigateTo(path); }
   export function goBack() { handleGoBack(); }
   export function goForward() { handleGoForward(); }
@@ -518,15 +394,15 @@
     if (!t) return;
     navigateTo(t.path, false);
   }
-  export function copy() { doCopy(); }
-  export function cut() { doCut(); }
-  export function paste() { doPaste(); }
-  export function deleteSelected(permanent: boolean) { doDelete(permanent); }
+  export function copy() { fileOps?.doCopy(); }
+  export function cut() { fileOps?.doCut(); }
+  export function paste() { fileOps?.doPaste(); }
+  export function deleteSelected(permanent: boolean) { fileOps?.doDelete(permanent); }
   export function renameSelected() {
     if (selectedPaths.size === 1) startRename([...selectedPaths][0]);
   }
-  export function newFolder() { doNewFolder(); }
-  export function newFile() { doNewFile(); }
+  export function newFolder() { fileOps?.doNewFolder(); }
+  export function newFile() { fileOps?.doNewFile(); }
   export function selectAll() {
     if (!tabData) return;
     const cp = tabData.path;
@@ -538,6 +414,14 @@
     return null;
   }
 </script>
+
+<PaneFileOps
+  bind:this={fileOps}
+  {paneId}
+  {selectedPaths}
+  onRefresh={(path) => navigateTo(path, false)}
+  onError={handleFileOpsError}
+/>
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -623,10 +507,18 @@
       filterValue={tabData.filterText}
       onFilterChange={handleFilterChange}
     />
-    <StatusBar
-      itemCount={fileListRef?.getFilteredCount() ?? tabData.entries.length}
-      currentPath={tabData.path}
-    />
+    <div class="bottom-bar">
+      <StatusBar
+        itemCount={fileListRef?.getFilteredCount() ?? tabData.entries.length}
+      />
+      <FolderFilterBar
+        bind:this={folderFilterBar}
+        totalCount={fileListRef?.getTotalCount() ?? tabData.entries.length}
+        filteredCount={fileListRef?.getFilteredCount() ?? tabData.entries.length}
+        filterValue={tabData.filterText}
+        onFilterChange={handleFilterChange}
+      />
+    </div>
   {/if}
 </div>
 
@@ -662,6 +554,14 @@
     background-color: var(--bg);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
+  }
+
+  .bottom-bar {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    background-color: var(--surface);
+    border-top: 1px solid var(--border);
   }
 
   .ptool-spacer {

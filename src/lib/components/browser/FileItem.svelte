@@ -1,5 +1,6 @@
 <script lang="ts">
   import FileIcon from "../common/FileIcon.svelte";
+  import { getNameTokens } from "../../utils/folderFilter";
 
   interface FileEntry {
     name: string;
@@ -18,9 +19,23 @@
     onSelect: (path: string, entry: FileEntry, e: MouseEvent) => void;
     currentPath: string;
     selected?: boolean;
+    filterText?: string;
   }
 
-  let { entry, onNavigate, onOpenFile, onContextMenu, onSelect, currentPath, selected = false }: Props = $props();
+  let { entry, onNavigate, onOpenFile, onContextMenu, onSelect, currentPath, selected = false, filterText = "" }: Props = $props();
+
+  function highlightName(name: string, filter: string): string {
+    const tokens = getNameTokens(filter);
+    if (tokens.length === 0) return name;
+    // Escape HTML entities
+    let html = name.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    for (const token of tokens) {
+      const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(`(${escaped})`, "gi");
+      html = html.replace(regex, `<mark class="ff-highlight">$1</mark>`);
+    }
+    return html;
+  }
 
   function formatSize(bytes: number): string {
     if (entry.is_dir) return "";
@@ -99,7 +114,7 @@
   tabindex="0"
 >
   <div class="col-icon"><FileIcon extension={entry.extension} isDir={entry.is_dir} /></div>
-  <div class="col-name" class:is-dir={entry.is_dir}>{entry.name}</div>
+  <div class="col-name" class:is-dir={entry.is_dir}>{#if filterText}{@html highlightName(entry.name, filterText)}{:else}{entry.name}{/if}</div>
   <div class="col-size">{formatSize(entry.size)}</div>
   <div class="col-modified">{formatDate(entry.modified)}</div>
   <div class="col-type">{getTypeName()}</div>
@@ -176,5 +191,12 @@
 
   .file-item.is-hidden {
     opacity: 0.5;
+  }
+
+  :global(.ff-highlight) {
+    background-color: rgba(0, 180, 216, 0.25);
+    color: var(--accent);
+    border-radius: 2px;
+    padding: 0 1px;
   }
 </style>

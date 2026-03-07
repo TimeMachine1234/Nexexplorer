@@ -1,5 +1,6 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
+  import SearchResults from "./SearchResults.svelte";
 
   interface SearchResult {
     path: string;
@@ -54,7 +55,12 @@
   let resultListEl: HTMLDivElement | undefined = $state();
 
   $effect(() => {
-    loadIndexStatus();
+    loadIndexStatus().then(() => {
+      // Auto-start indexing if no index exists
+      if (indexStatus && !indexStatus.indexing && indexStatus.total_files === 0) {
+        startIndex();
+      }
+    });
     loadSearchHistory();
     // Focus input on mount
     setTimeout(() => inputEl?.focus(), 50);
@@ -187,57 +193,13 @@
     doSearch();
   }
 
-  function formatTimeAgo(epoch: number): string {
-    const now = Date.now() / 1000;
-    const diff = now - epoch;
-    if (diff < 60) return "just now";
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-    return `${Math.floor(diff / 86400)}d ago`;
-  }
-
-  function formatBytes(bytes: number): string {
-    if (bytes === 0) return "0 B";
-    const units = ["B", "KB", "MB", "GB", "TB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
-  }
-
-  function formatDate(epoch: number): string {
-    if (!epoch) return "";
-    const d = new Date(epoch * 1000);
-    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-  }
-
-  function getParentPath(fullPath: string): string {
-    const sep = fullPath.lastIndexOf("\\");
-    if (sep > 0) return fullPath.substring(0, sep);
-    return fullPath;
-  }
-
-  function getIcon(result: SearchResult): string {
-    if (result.is_dir) return "📁";
-    const ext = result.extension.toLowerCase();
-    const icons: Record<string, string> = {
-      pdf: "📕", doc: "📘", docx: "📘", xls: "📗", xlsx: "📗",
-      ppt: "📙", pptx: "📙", zip: "📦", rar: "📦", "7z": "📦",
-      jpg: "🖼️", jpeg: "🖼️", png: "🖼️", gif: "🖼️", webp: "🖼️", svg: "🖼️",
-      mp3: "🎵", wav: "🎵", flac: "🎵", ogg: "🎵", aac: "🎵",
-      mp4: "🎬", mkv: "🎬", avi: "🎬", mov: "🎬", webm: "🎬",
-      exe: "⚙️", msi: "⚙️", bat: "⚙️", cmd: "⚙️",
-      js: "📜", ts: "📜", py: "📜", rs: "📜", go: "📜",
-      html: "🌐", css: "🎨", json: "📋", xml: "📋", yaml: "📋",
-      txt: "📝", md: "📝", log: "📝",
-    };
-    return icons[ext] || "📄";
-  }
-
   let statusPollInterval: ReturnType<typeof setInterval> | null = null;
 
   async function startIndex() {
     try {
-      await invoke("start_indexing", { paths: ["C:\\"] });
-      await invoke("start_file_watcher", { paths: ["C:\\"] });
+      const paths: string[] = await invoke("get_default_index_paths");
+      await invoke("start_indexing", { paths });
+      await invoke("start_file_watcher", { paths });
       // Poll status every 2 seconds while indexing
       statusPollInterval = setInterval(async () => {
         await loadIndexStatus();
@@ -251,44 +213,20 @@
       console.error("Failed to start indexing:", e);
     }
   }
-
-  // Highlight matching text
-  function highlightName(name: string, q: string): string {
-    if (!q) return escapeHtml(name);
-    const lower = name.toLowerCase();
-    const qLower = q.toLowerCase();
-    const idx = lower.indexOf(qLower);
-    if (idx === -1) return escapeHtml(name);
-    const before = name.substring(0, idx);
-    const match = name.substring(idx, idx + q.length);
-    const after = name.substring(idx + q.length);
-    return `${escapeHtml(before)}<mark>${escapeHtml(match)}</mark>${escapeHtml(after)}`;
-  }
-
-  function escapeHtml(s: string): string {
-    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  }
-
-  function formatSnippet(snippet: string): string {
-    // The Rust backend uses >>> and <<< as highlight markers from FTS5 snippet()
-    // First escape HTML, then convert markers to <mark> tags
-    let safe = escapeHtml(snippet);
-    safe = safe.replace(/&gt;&gt;&gt;/g, "<mark>").replace(/&lt;&lt;&lt;/g, "</mark>");
-    // Trim to a single line and limit length
-    const lines = safe.split("\n").filter(l => l.trim()).slice(0, 2);
-    return lines.join(" ").substring(0, 200);
-  }
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="search-backdrop" onclick={onClose}>
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div class="search-panel" onclick={(e) => e.stopPropagation()} onkeydown={onKeydown}>
-    <div class="search-input-row">
-      <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"></circle>
-        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-      </svg>
+
+    <!-- Header: back arrow + query title or input -->
+    <div class="panel-header">
+      <button class="back-btn" onclick={onClose} title="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
       <!-- svelte-ignore a11y_autofocus -->
       <input
         bind:this={inputEl}
@@ -299,14 +237,14 @@
         oninput={onInput}
         autofocus
       />
-      <button class="filter-toggle" class:active={showFilters} onclick={() => showFilters = !showFilters} title="Filters">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-        </svg>
-      </button>
       {#if loading}
         <div class="search-spinner"></div>
       {/if}
+      <button class="filter-toggle" class:active={showFilters} onclick={() => showFilters = !showFilters} title="Filters">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+        </svg>
+      </button>
     </div>
 
     {#if showFilters}
@@ -330,90 +268,56 @@
       </div>
     {/if}
 
-    <div class="search-results" bind:this={resultListEl}>
-      {#if !query.trim() && indexStatus}
-        <div class="search-status">
-          {#if indexStatus.indexing}
-            <div class="status-line">
-              <div class="status-spinner"></div>
-              <span>Indexing in progress... ({indexStatus.total_files.toLocaleString()} files so far)</span>
-            </div>
-          {:else if indexStatus.total_files > 0}
-            <div class="status-line">
-              <span class="status-check">✓</span>
-              <span>{indexStatus.total_files.toLocaleString()} files indexed{indexStatus.content_indexed > 0 ? ` · ${indexStatus.content_indexed.toLocaleString()} with content` : ''}</span>
-            </div>
-            <div class="syntax-hints">
-              <div class="syntax-title">Smart search syntax</div>
-              <div class="syntax-grid">
-                <span class="syntax-key">ext:rs</span><span class="syntax-desc">by extension</span>
-                <span class="syntax-key">type:image</span><span class="syntax-desc">by file type</span>
-                <span class="syntax-key">size:&gt;100mb</span><span class="syntax-desc">by size</span>
-                <span class="syntax-key">modified:today</span><span class="syntax-desc">by date</span>
-                <span class="syntax-key">created:2024</span><span class="syntax-desc">by year</span>
-                <span class="syntax-key">in:C:\Users</span><span class="syntax-desc">by path</span>
-              </div>
-              <div class="syntax-note">Supports fuzzy matching — type "srchov" to find SearchOverlay</div>
-            </div>
-            {#if searchHistory.length > 0}
-              <div class="history-section">
-                <div class="history-title">Recent searches</div>
-                {#each searchHistory.slice(0, 5) as entry}
-                  <!-- svelte-ignore a11y_click_events_have_key_events -->
-                  <!-- svelte-ignore a11y_no_static_element_interactions -->
-                  <div class="history-item" onclick={() => useHistoryQuery(entry)}>
-                    <svg class="history-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"></polyline><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path></svg>
-                    <span class="history-query">{entry.query}</span>
-                    <span class="history-meta">{entry.result_count} results · {formatTimeAgo(entry.timestamp)}</span>
-                  </div>
-                {/each}
-              </div>
-            {/if}
-          {:else}
-            <div class="status-empty">
-              <div class="status-empty-text">No files indexed yet</div>
-              <button class="index-btn" onclick={startIndex}>Index C:\ drive</button>
-              <div class="status-hint">Indexing runs in the background and enables instant search</div>
-            </div>
-          {/if}
-        </div>
-      {:else if query.trim() && results.length === 0 && !loading}
-        <div class="no-results">No results found for "{query}"</div>
-      {:else}
-        {#each results as result, i}
-          <!-- svelte-ignore a11y_click_events_have_key_events -->
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div
-            class="result-item"
-            class:selected={i === selectedIndex}
-            onclick={() => openResult(result)}
-            onmouseenter={() => selectedIndex = i}
-          >
-            <span class="result-icon">{getIcon(result)}</span>
-            <div class="result-info">
-              <div class="result-name">{@html highlightName(result.name, query)}</div>
-              <div class="result-path">{getParentPath(result.path)}</div>
-              {#if result.content_snippet}
-                <div class="result-snippet">{@html formatSnippet(result.content_snippet)}</div>
-              {/if}
-            </div>
-            <div class="result-meta">
-              {#if !result.is_dir}
-                <span class="result-size">{formatBytes(result.size)}</span>
-              {/if}
-              <span class="result-date">{formatDate(result.modified)}</span>
-            </div>
-          </div>
-        {/each}
-      {/if}
-    </div>
-
+    <!-- Results count label -->
     {#if query.trim() && totalResults > 0}
-      <div class="search-footer">
-        <span>{totalResults} result{totalResults !== 1 ? "s" : ""}</span>
-        <span class="search-timing">{searchTime.toFixed(0)}ms</span>
+      <div class="results-label">
+        <span class="results-label-text">Results</span>
+        <span class="results-count">{totalResults}</span>
+        <span class="results-timing">{searchTime.toFixed(0)}ms</span>
       </div>
     {/if}
+
+    <SearchResults
+      {query}
+      {results}
+      {loading}
+      {selectedIndex}
+      {indexStatus}
+      {searchHistory}
+      bind:resultListEl
+      onSelectIndex={(i) => selectedIndex = i}
+      onOpenResult={openResult}
+      onUseHistoryQuery={useHistoryQuery}
+      onStartIndex={startIndex}
+    />
+
+    <!-- Footer bar -->
+    <div class="panel-footer">
+      <span class="footer-source">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.5">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        NexExplorer
+      </span>
+      <div class="footer-shortcuts">
+        <span class="shortcut-group">
+          <span class="shortcut-label">Open</span>
+          <kbd>↵</kbd>
+        </span>
+        <span class="shortcut-divider"></span>
+        <span class="shortcut-group">
+          <span class="shortcut-label">Filters</span>
+          <kbd>Tab</kbd>
+        </span>
+        <span class="shortcut-divider"></span>
+        <span class="shortcut-group">
+          <span class="shortcut-label">Close</span>
+          <kbd>Esc</kbd>
+        </span>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -421,54 +325,90 @@
   .search-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.4);
     display: flex;
     align-items: flex-start;
     justify-content: center;
-    padding-top: 12vh;
+    padding-top: 10vh;
     z-index: 4000;
-    backdrop-filter: blur(2px);
+    backdrop-filter: blur(4px);
   }
 
   .search-panel {
-    width: 600px;
-    max-width: 90vw;
-    max-height: 70vh;
-    background: var(--surface-high);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    width: 660px;
+    max-width: 92vw;
+    max-height: 72vh;
+    background: rgba(34, 34, 34, 0.5); /* var(--surface) equivalent but transparent */
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.04),
+      0 24px 80px rgba(0, 0, 0, 0.7);
     display: flex;
     flex-direction: column;
     overflow: hidden;
   }
 
-  .search-input-row {
+  /* ── Header ─────────────────────────────── */
+  .panel-header {
     display: flex;
     align-items: center;
-    padding: 12px 16px;
     gap: 10px;
-    border-bottom: 1px solid var(--border);
+    padding: 16px 18px 14px;
   }
 
-  .search-icon {
-    color: var(--text-dim);
+  .back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.55);
+    cursor: pointer;
     flex-shrink: 0;
+    transition: all 0.12s;
+  }
+
+  .back-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+    border-color: rgba(255, 255, 255, 0.18);
   }
 
   .search-input {
     flex: 1;
-    height: 32px;
     background: transparent;
     border: none;
-    color: var(--text);
-    font-size: 15px;
+    color: #fff;
+    font-size: 17px;
+    font-weight: 500;
     font-family: inherit;
     outline: none;
+    letter-spacing: 0.01em;
   }
 
   .search-input::placeholder {
-    color: var(--text-dim);
+    color: rgba(255, 255, 255, 0.25);
+    font-weight: 400;
+  }
+
+  .search-spinner {
+    width: 15px;
+    height: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.55s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 
   .filter-toggle {
@@ -477,47 +417,32 @@
     justify-content: center;
     width: 28px;
     height: 28px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 7px;
     background: transparent;
-    color: var(--text-dim);
+    color: rgba(255, 255, 255, 0.35);
     cursor: pointer;
     flex-shrink: 0;
-    transition: all 0.1s;
+    transition: all 0.12s;
   }
 
   .filter-toggle:hover {
-    color: var(--text);
-    border-color: var(--border-active);
+    color: rgba(255, 255, 255, 0.7);
+    border-color: rgba(255, 255, 255, 0.2);
   }
 
   .filter-toggle.active {
     color: var(--accent);
-    border-color: var(--accent);
-    background: rgba(100, 100, 255, 0.08);
+    border-color: rgba(0, 180, 216, 0.4);
+    background: rgba(0, 180, 216, 0.08);
   }
 
-  .search-spinner {
-    width: 16px;
-    height: 16px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
-    flex-shrink: 0;
-  }
-
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-
+  /* ── Filters ─────────────────────────────── */
   .filters-row {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--border);
-    background: var(--bg);
+    padding: 0 18px 10px;
   }
 
   .filter-group {
@@ -532,299 +457,115 @@
 
   .filter-label {
     display: block;
-    font-size: 10px;
-    color: var(--text-dim);
+    font-size: 9.5px;
+    color: rgba(255, 255, 255, 0.3);
     margin-bottom: 3px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.6px;
   }
 
   .filter-input {
     width: 100%;
     height: 26px;
     padding: 0 8px;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    background: var(--surface);
-    color: var(--text);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.85);
     font-size: 12px;
     font-family: inherit;
     outline: none;
     box-sizing: border-box;
+    transition: border-color 0.1s;
   }
 
   .filter-input:focus {
-    border-color: var(--accent);
+    border-color: rgba(0, 180, 216, 0.5);
   }
 
-  .search-results {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 100px;
-    max-height: 50vh;
-  }
-
-  .search-status {
-    padding: 24px 20px;
-    text-align: center;
-  }
-
-  .status-line {
+  /* ── Results label ───────────────────────── */
+  .results-label {
     display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 20px 8px;
+  }
+
+  .results-label-text {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 500;
+    letter-spacing: 0.2px;
+  }
+
+  .results-count {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.25);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .results-timing {
+    margin-left: auto;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.2);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Footer bar ──────────────────────────── */
+  .panel-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 18px;
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  .footer-source {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    color: rgba(255, 255, 255, 0.3);
+    font-weight: 500;
+  }
+
+  .footer-shortcuts {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .shortcut-group {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .shortcut-label {
+    font-size: 11.5px;
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  kbd {
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    font-size: 13px;
-    color: var(--text-muted);
-  }
-
-  .status-spinner {
-    width: 14px;
-    height: 14px;
-    border: 2px solid var(--border);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.6s linear infinite;
-  }
-
-  .status-check {
-    color: #4ade80;
-    font-size: 14px;
-  }
-
-  .status-hint {
-    font-size: 11px;
-    color: var(--text-dim);
-    margin-top: 8px;
-  }
-
-  .status-empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .status-empty-text {
-    font-size: 13px;
-    color: var(--text-muted);
-  }
-
-  .index-btn {
-    height: 30px;
-    padding: 0 16px;
-    border: 1px solid var(--accent);
-    border-radius: 6px;
-    background: var(--accent);
-    color: white;
-    font-size: 12px;
-    font-family: inherit;
-    cursor: pointer;
-    transition: opacity 0.1s;
-  }
-
-  .index-btn:hover {
-    opacity: 0.85;
-  }
-
-  .no-results {
-    padding: 32px 20px;
-    text-align: center;
-    font-size: 13px;
-    color: var(--text-dim);
-  }
-
-  .result-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 16px;
-    cursor: pointer;
-    transition: background 0.05s;
-  }
-
-  .result-item:hover,
-  .result-item.selected {
-    background: rgba(255, 255, 255, 0.04);
-  }
-
-  .result-item.selected {
-    background: rgba(100, 100, 255, 0.08);
-  }
-
-  .result-icon {
-    font-size: 18px;
-    width: 24px;
-    text-align: center;
-    flex-shrink: 0;
-  }
-
-  .result-info {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .result-name {
-    font-size: 13px;
-    color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .result-name :global(mark) {
-    background: rgba(250, 204, 21, 0.3);
-    color: var(--text);
-    border-radius: 2px;
-    padding: 0 1px;
-  }
-
-  .result-path {
-    font-size: 11px;
-    color: var(--text-dim);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-top: 1px;
-  }
-
-  .result-meta {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 1px;
-    flex-shrink: 0;
-  }
-
-  .result-size {
-    font-size: 11px;
-    color: var(--text-muted);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .result-date {
-    font-size: 10px;
-    color: var(--text-dim);
-  }
-
-  .search-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 6px 16px;
-    border-top: 1px solid var(--border);
-    font-size: 11px;
-    color: var(--text-dim);
-    background: var(--bg);
-  }
-
-  .search-timing {
-    color: var(--text-muted);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .syntax-hints {
-    margin-top: 12px;
-    padding: 10px 14px;
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: 8px;
-    border: 1px solid var(--border);
-  }
-
-  .syntax-title {
-    font-size: 10px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 8px;
-  }
-
-  .syntax-grid {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 4px 12px;
-    font-size: 11px;
-  }
-
-  .syntax-key {
-    color: var(--accent, #7c8aff);
-    font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
-    font-size: 11px;
-  }
-
-  .syntax-desc {
-    color: var(--text-dim);
-  }
-
-  .result-snippet {
-    font-size: 11px;
-    color: var(--text-dim);
-    margin-top: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    font-family: "Cascadia Code", "Fira Code", "Consolas", monospace;
-    line-height: 1.4;
-  }
-
-  .result-snippet :global(mark) {
-    background: rgba(250, 204, 21, 0.25);
-    color: var(--text);
-    border-radius: 2px;
-    padding: 0 1px;
-  }
-
-  .syntax-note {
-    margin-top: 8px;
-    font-size: 10px;
-    color: var(--text-dim);
-    opacity: 0.7;
-    font-style: italic;
-  }
-
-  .history-section {
-    margin-top: 12px;
-  }
-
-  .history-title {
-    font-size: 10px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 6px;
-  }
-
-  .history-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 5px 8px;
+    min-width: 20px;
+    height: 18px;
+    padding: 0 4px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 4px;
-    cursor: pointer;
-    transition: background 0.05s;
-  }
-
-  .history-item:hover {
-    background: rgba(255, 255, 255, 0.04);
-  }
-
-  .history-icon {
-    color: var(--text-dim);
-    flex-shrink: 0;
-  }
-
-  .history-query {
-    font-size: 12px;
-    color: var(--text);
-    flex: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .history-meta {
+    background: rgba(255, 255, 255, 0.06);
     font-size: 10px;
-    color: var(--text-dim);
-    flex-shrink: 0;
+    font-family: inherit;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1;
+  }
+
+  .shortcut-divider {
+    width: 1px;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.1);
   }
 </style>

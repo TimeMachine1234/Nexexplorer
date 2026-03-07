@@ -1,6 +1,7 @@
 <script lang="ts">
   import FileItem from "./FileItem.svelte";
   import type { SortField } from "../../stores/panes";
+  import { applyFolderFilter, getNameTokens } from "../../utils/folderFilter";
 
   interface FileEntry {
     name: string;
@@ -49,10 +50,9 @@
       result = result.filter((e) => !e.is_hidden);
     }
 
-    // Filter by text
-    const ft = filterText.toLowerCase();
-    if (ft) {
-      result = result.filter((e) => e.name.toLowerCase().includes(ft));
+    // Filter by text (smart folder filter)
+    if (filterText.trim()) {
+      result = applyFolderFilter(result, filterText);
     }
 
     // Sort: folders first always, then by field
@@ -159,7 +159,7 @@
     <div class="virtual-window" style="transform: translateY({offsetY}px);">
       {#each visibleEntries as entry (entry.name)}
         {@const fullPath = currentPath.endsWith("\\") ? `${currentPath}${entry.name}` : `${currentPath}\\${entry.name}`}
-        <FileItem {entry} {onNavigate} {onOpenFile} {onContextMenu} {onSelect} {currentPath} selected={selectedPaths.has(fullPath)} />
+        <FileItem {entry} {onNavigate} {onOpenFile} {onContextMenu} {onSelect} {currentPath} selected={selectedPaths.has(fullPath)} {filterText} />
       {/each}
     </div>
   </div>

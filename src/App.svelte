@@ -18,6 +18,7 @@
   } from "./lib/stores/panes";
   import { setupTransferListener, transfers } from "./lib/stores/transfers";
   import { selectedFileForPreview, debouncedPreviewPath } from "./lib/stores/preview";
+  import { invoke } from "@tauri-apps/api/core";
 
   let paneManager: PaneManager | undefined = $state();
   let showTransferPanel = $state(false);
@@ -28,6 +29,21 @@
 
   // Setup transfer progress listener
   setupTransferListener();
+
+  // Auto-start indexing + file watcher on launch
+  (async () => {
+    try {
+      const paths: string[] = await invoke("get_default_index_paths");
+      if (paths.length > 0) {
+        // Start indexing (may fail if already running — that's fine)
+        try { await invoke("start_indexing", { paths }); } catch (_) {}
+        // Always start the file watcher for live fs-change events
+        try { await invoke("start_file_watcher", { paths }); } catch (_) {}
+      }
+    } catch (e) {
+      console.warn("[indexer] Auto-start failed:", e);
+    }
+  })();
 
   // Auto-show transfer panel when transfers start
   $effect(() => {
@@ -173,8 +189,14 @@
       }
       return;
     }
-    // Ctrl+Shift+F = New file
+    // Ctrl+Shift+F = Focus folder filter bar
     if (e.ctrlKey && e.shiftKey && e.key === "F") {
+      e.preventDefault();
+      ref?.focusFilterBar();
+      return;
+    }
+    // Ctrl+Alt+N = New file
+    if (e.ctrlKey && e.altKey && e.key === "n") {
       e.preventDefault();
       ref?.newFile();
       return;

@@ -38,6 +38,7 @@ pub fn run() {
             commands::preview::list_archive,
             commands::preview::get_asset_url,
             commands::search::start_indexing,
+            commands::search::get_default_index_paths,
             commands::search::stop_indexing,
             commands::search::get_index_status,
             commands::search::search_files,

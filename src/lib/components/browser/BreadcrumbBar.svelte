@@ -89,7 +89,7 @@
     </button>
   </div>
 
-  <div class="path-area" ondblclick={startEditing}>
+  <div class="path-area" onclick={startEditing}>
     {#if isEditing}
       <input
         bind:this={inputEl}
@@ -105,7 +105,7 @@
           {#if i > 0}
             <span class="separator">›</span>
           {/if}
-          <button class="segment" onclick={() => onNavigate(seg.path)}>
+          <button class="segment" onclick={(e) => { e.stopPropagation(); onNavigate(seg.path); }}>
             {seg.label}
           </button>
         {/each}
