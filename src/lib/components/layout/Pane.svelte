@@ -40,8 +40,7 @@
   import { get } from "svelte/store";
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
-  import { onDestroy, onMount } from "svelte";
-  import { registerPaneRef, unregisterPaneRef } from "../../stores/paneRefs";
+  import { onDestroy } from "svelte";
 
   interface Props {
     paneId: string;
@@ -49,15 +48,6 @@
   }
 
   let { paneId, showWindowControls = false }: Props = $props();
-
-  onMount(() => {
-    registerPaneRef(paneId, {
-      focusPathBar, showFilterBar, focusFilterBar,
-      navigate, goBack, goForward, goUp, refresh,
-      copy, cut, paste, deleteSelected, renameSelected,
-      newFolder, newFile, selectAll, getSelectedFilePath
-    });
-  });
 
   let breadcrumbBar: BreadcrumbBar | undefined = $state();
   let filterBar: FilterBar | undefined = $state();
@@ -70,12 +60,18 @@
   let watchedPath: string | null = null;
 
   // ── Local reactive state that mirrors the store ──
-  let paneData = $derived($layout.panes.find((pp) => pp.id === paneId) ?? null);
-  let tabData = $derived(paneData ? getActiveTab(paneData) : null);
-  let isActive = $derived($layout.activePaneId === paneId);
-  let paneCount = $derived($layout.panes.length);
-  let showHidden = $derived($layout.showHiddenFiles);
-  let isHome = $derived(tabData !== null && tabData.path === HOME_PATH);
+  // Initialize immediately from the store so the first render has real data
+  // (avoids a blank frame while waiting for $effect to fire).
+  const _initL = get(layout);
+  const _initPane = _initL.panes.find((pp) => pp.id === paneId) ?? null;
+  const _initTab = _initPane ? getActiveTab(_initPane) : null;
+
+  let paneData: PaneState | null = $state(_initPane);
+  let tabData: TabState | null = $state(_initTab);
+  let isActive: boolean = $state(_initL.activePaneId === paneId);
+  let paneCount: number = $state(_initL.panes.length);
+  let showHidden: boolean = $state(_initL.showHiddenFiles);
+  let isHome: boolean = $state(_initTab !== null && _initTab.path === HOME_PATH);
 
   // ── Selection & context menu state ──
   let selectedPaths: Set<string> = $state(new Set());
@@ -95,6 +91,18 @@
       return { ...l };
     });
   }
+
+  // Sync from store → local state on every store change
+  $effect(() => {
+    const l = $layout;
+    const p = l.panes.find((pp) => pp.id === paneId) ?? null;
+    paneData = p;
+    tabData = p ? getActiveTab(p) : null;
+    isActive = l.activePaneId === paneId;
+    paneCount = l.panes.length;
+    showHidden = l.showHiddenFiles;
+    isHome = tabData !== null && tabData.path === HOME_PATH;
+  });
 
   // Keep preview file context in sync when selection or file list changes
   $effect(() => {
@@ -443,7 +451,6 @@
   });
 
   onDestroy(async () => {
-    unregisterPaneRef(paneId);
     if (_unlistenPromise) {
       const unlisten = await _unlistenPromise;
       unlisten();

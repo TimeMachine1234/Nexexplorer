@@ -79,28 +79,7 @@ function initialLayout(): AppLayout {
   };
 }
 
-// The internal writable store. We wrap it below to ensure every update()
-// produces new object references for panes and tabs, so that Svelte 5's
-// $derived (which uses === comparison) correctly detects changes.
-const _layout = writable<AppLayout>(initialLayout());
-
-function deepCloneLayout(l: AppLayout): AppLayout {
-  return {
-    ...l,
-    panes: l.panes.map(p => ({
-      ...p,
-      tabs: p.tabs.map(t => ({ ...t })),
-    })),
-  };
-}
-
-export const layout = {
-  subscribe: _layout.subscribe,
-  set: (value: AppLayout) => _layout.set(deepCloneLayout(value)),
-  update: (fn: (l: AppLayout) => AppLayout) => {
-    _layout.update((l) => deepCloneLayout(fn(l)));
-  },
-};
+export const layout = writable<AppLayout>(initialLayout());
 
 // ── Helpers to get active pane/tab ──
 export function getActivePane(l: AppLayout): PaneState {
