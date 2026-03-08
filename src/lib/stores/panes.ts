@@ -79,7 +79,28 @@ function initialLayout(): AppLayout {
   };
 }
 
-export const layout = writable<AppLayout>(initialLayout());
+// Wrap the writable so every update() produces new pane/tab references.
+// Svelte 5's $derived uses === comparison; without this, in-place mutations
+// are invisible to $derived and the UI never re-renders.
+const _layout = writable<AppLayout>(initialLayout());
+
+function deepCloneLayout(l: AppLayout): AppLayout {
+  return {
+    ...l,
+    panes: l.panes.map(p => ({
+      ...p,
+      tabs: p.tabs.map(t => ({ ...t })),
+    })),
+  };
+}
+
+export const layout = {
+  subscribe: _layout.subscribe,
+  set: (value: AppLayout) => _layout.set(deepCloneLayout(value)),
+  update: (fn: (l: AppLayout) => AppLayout) => {
+    _layout.update((l) => deepCloneLayout(fn(l)));
+  },
+};
 
 // ── Helpers to get active pane/tab ──
 export function getActivePane(l: AppLayout): PaneState {
