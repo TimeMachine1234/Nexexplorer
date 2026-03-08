@@ -199,7 +199,6 @@
     try {
       const paths: string[] = await invoke("get_default_index_paths");
       await invoke("start_indexing", { paths });
-      await invoke("start_file_watcher", { paths });
       // Poll status every 2 seconds while indexing
       statusPollInterval = setInterval(async () => {
         await loadIndexStatus();

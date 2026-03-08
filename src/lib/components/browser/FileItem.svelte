@@ -136,8 +136,8 @@
   }
 
   .file-item:focus {
-    background-color: var(--selected-bg);
-    outline: none;
+    outline: 1px solid var(--accent);
+    outline-offset: -1px;
   }
 
   .file-item.selected {

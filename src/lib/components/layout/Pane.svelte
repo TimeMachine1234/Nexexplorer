@@ -1,8 +1,10 @@
 <script lang="ts">
   import TabBar from "./TabBar.svelte";
+  import ToolbarActions from "./ToolbarActions.svelte";
   import StatusBar from "./StatusBar.svelte";
   import BreadcrumbBar from "../browser/BreadcrumbBar.svelte";
   import FileList from "../browser/FileList.svelte";
+  import GridView from "../browser/GridView.svelte";
   import FilterBar from "../browser/FilterBar.svelte";
   import FolderFilterBar from "../browser/FolderFilterBar.svelte";
   import ContextMenu from "../common/ContextMenu.svelte";
@@ -11,6 +13,9 @@
   import TextInput from "../common/TextInput.svelte";
   import EmptyState from "../common/EmptyState.svelte";
   import PaneFileOps from "./PaneFileOps.svelte";
+  import HomeView from "../home/HomeView.svelte";
+  import { HOME_PATH } from "../../stores/home";
+  import { settings } from "../../stores/settings";
   import {
     type PaneState,
     type TabState,
@@ -31,11 +36,12 @@
     toggleHiddenFiles,
   } from "../../stores/panes";
   import { clipboard } from "../../stores/transfers";
-  import { selectedFileForPreview } from "../../stores/preview";
+  import { selectedFileForPreview, previewFileContext, previewArrowPath } from "../../stores/preview";
   import { get } from "svelte/store";
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
-  import { onDestroy } from "svelte";
+  import { onDestroy, onMount } from "svelte";
+  import { registerPaneRef, unregisterPaneRef } from "../../stores/paneRefs";
 
   interface Props {
     paneId: string;
@@ -44,20 +50,32 @@
 
   let { paneId, showWindowControls = false }: Props = $props();
 
+  onMount(() => {
+    registerPaneRef(paneId, {
+      focusPathBar, showFilterBar, focusFilterBar,
+      navigate, goBack, goForward, goUp, refresh,
+      copy, cut, paste, deleteSelected, renameSelected,
+      newFolder, newFile, selectAll, getSelectedFilePath
+    });
+  });
+
   let breadcrumbBar: BreadcrumbBar | undefined = $state();
   let filterBar: FilterBar | undefined = $state();
   let folderFilterBar: FolderFilterBar | undefined = $state();
   let fileListRef: FileList | undefined = $state();
+  let gridViewRef: GridView | undefined = $state();
   let fileOps: PaneFileOps | undefined = $state();
 
+  // Track which directory this pane instance is currently watching
+  let watchedPath: string | null = null;
+
   // ── Local reactive state that mirrors the store ──
-  // We keep local $state copies and sync them from the store via $effect.
-  // This avoids all $derived / stale-prop issues.
-  let paneData: PaneState | null = $state(null);
-  let tabData: TabState | null = $state(null);
-  let isActive: boolean = $state(false);
-  let paneCount: number = $state(1);
-  let showHidden: boolean = $state(false);
+  let paneData = $derived($layout.panes.find((pp) => pp.id === paneId) ?? null);
+  let tabData = $derived(paneData ? getActiveTab(paneData) : null);
+  let isActive = $derived($layout.activePaneId === paneId);
+  let paneCount = $derived($layout.panes.length);
+  let showHidden = $derived($layout.showHiddenFiles);
+  let isHome = $derived(tabData !== null && tabData.path === HOME_PATH);
 
   // ── Selection & context menu state ──
   let selectedPaths: Set<string> = $state(new Set());
@@ -78,34 +96,58 @@
     });
   }
 
-  // Sync from store → local state on every store change
+  // Keep preview file context in sync when selection or file list changes
   $effect(() => {
-    const l = $layout;
-    const p = l.panes.find((pp) => pp.id === paneId) ?? null;
-    paneData = p;
-    tabData = p ? getActiveTab(p) : null;
-    isActive = l.activePaneId === paneId;
-    paneCount = l.panes.length;
-    showHidden = l.showHiddenFiles;
+    const paths = selectedPaths;
+    const tab = tabData;
+    if (tab && paths.size === 1) {
+      const currentPath = [...paths][0];
+      const dirPath = tab.path.endsWith("\\") ? tab.path : tab.path + "\\";
+      const filesWithPaths = tab.entries.map((e) => ({
+        ...e,
+        path: dirPath + e.name,
+      }));
+      previewFileContext.set({ files: filesWithPaths, currentPath });
+    }
   });
+
+  // When user navigates with arrow keys in preview, move the file list highlight.
+  // Using direct .subscribe() instead of  to guarantee firing on store changes.
+  {
+    const unsub = previewArrowPath.subscribe((arrowPath) => {
+      if (!arrowPath) return;
+      const l = get(layout);
+      const pane = l.panes.find((p) => p.id === paneId);
+      if (!pane || l.activePaneId !== paneId) return;
+      const tab = getActiveTab(pane);
+      if (!tab) return;
+      const dirPath = tab.path.endsWith("\\") ? tab.path : tab.path + "\\";
+      const fileInCurrentDir = tab.entries.some((e) => dirPath + e.name === arrowPath);
+      if (fileInCurrentDir) selectedPaths = new Set([arrowPath]);
+    });
+    onDestroy(unsub);
+  }
 
   // ── Selection ──
 
-  function handleSelect(path: string, _entry: FileEntry, e: MouseEvent) {
+  function handleSelect(path: string, entry: FileEntry, e: MouseEvent) {
     if (e.ctrlKey) {
       selectedPaths = new Set(selectedPaths);
       if (selectedPaths.has(path)) selectedPaths.delete(path);
       else selectedPaths.add(path);
     } else if (e.shiftKey) {
-      // Simple shift-click: add to selection
       selectedPaths = new Set(selectedPaths);
       selectedPaths.add(path);
     } else {
       selectedPaths = new Set([path]);
     }
-    // Update preview store with single selection
-    if (selectedPaths.size === 1) {
-      selectedFileForPreview.set([...selectedPaths][0]);
+    // Update preview store and file context
+    if (selectedPaths.size === 1 && tabData) {
+      const single = [...selectedPaths][0];
+      selectedFileForPreview.set(single);
+      const dirPath = tabData.path.endsWith("\\") ? tabData.path : tabData.path + "\\";
+      const filesWithPaths = tabData.entries.map((e) => ({ ...e, path: dirPath + e.name }));
+      previewFileContext.set({ files: filesWithPaths, currentPath: single });
     } else {
       selectedFileForPreview.set(null);
     }
@@ -168,11 +210,30 @@
     if (!ids) return;
     const { pId, tId } = ids;
 
+    // Home tab: no directory listing needed
+    if (path === HOME_PATH) {
+      layout.update((l) => {
+        const p = l.panes.find((pp) => pp.id === pId);
+        if (!p) return l;
+        const t = p.tabs.find((tt) => tt.id === tId);
+        if (!t) return l;
+        t.path = HOME_PATH;
+        t.entries = [];
+        t.isLoading = false;
+        t.errorMessage = "";
+        t.filterText = "";
+        if (addToHistory) pushTabHistory(t, HOME_PATH);
+        return { ...l };
+      });
+      return;
+    }
+
     layout.update((l) => {
       const p = l.panes.find((pp) => pp.id === pId);
       if (!p) return l;
       const t = p.tabs.find((tt) => tt.id === tId);
       if (!t) return l;
+      t.path = path;
       t.isLoading = true;
       t.errorMessage = "";
       t.filterText = "";
@@ -187,11 +248,20 @@
         const t = p.tabs.find((tt) => tt.id === tId);
         if (!t) return l;
         t.entries = entries;
-        t.path = path;
         t.isLoading = false;
         if (addToHistory) pushTabHistory(t, path);
         return { ...l };
       });
+
+      // Switch OS-level directory watch to the new path
+      const prev = watchedPath;
+      watchedPath = path;
+      if (prev && prev !== path) {
+        invoke("unwatch_directory", { path: prev }).catch(() => {});
+      }
+      if (watchedPath !== prev) {
+        invoke("watch_directory", { path: watchedPath }).catch(() => {});
+      }
     } catch (err: any) {
       layout.update((l) => {
         const p = l.panes.find((pp) => pp.id === pId);
@@ -208,6 +278,7 @@
   async function openFile(path: string) {
     try {
       await invoke("open_file", { path });
+      invoke("record_file_open", { path }).catch(() => {});
     } catch (err: any) {
       const ids = getLiveTab();
       if (!ids) return;
@@ -343,7 +414,7 @@
   let lastLoadedTabId = "";
   $effect(() => {
     const t = tabData;
-    if (t && t.entries.length === 0 && !t.isLoading && !t.errorMessage && t.id !== lastLoadedTabId) {
+    if (t && t.path !== HOME_PATH && t.entries.length === 0 && !t.isLoading && !t.errorMessage && t.id !== lastLoadedTabId) {
       lastLoadedTabId = t.id;
       navigateTo(t.path);
     }
@@ -352,8 +423,7 @@
   // ── Auto-refresh on filesystem changes ──
   // Listen for fs-change events from the backend watcher and refresh if
   // the currently viewed directory is among the changed paths.
-  let unlistenFsChange: (() => void) | null = null;
-  listen<string[]>("fs-change", (event: any) => {
+  let _unlistenPromise: Promise<() => void> | null = listen<string[]>("fs-change", (event: any) => {
     const changedDirs = event.payload;
     const ids = getLiveTab();
     if (!ids) return;
@@ -365,15 +435,24 @@
 
     const currentNorm = t.path.replace(/\\$/, "").toLowerCase();
     const match = changedDirs.some(
-      (d) => d.replace(/\\$/, "").toLowerCase() === currentNorm
+      (d: string) => d.replace(/\\$/, "").toLowerCase() === currentNorm
     );
     if (match) {
       navigateTo(t.path, false);
     }
-  }).then((fn) => { unlistenFsChange = fn; });
+  });
 
-  onDestroy(() => {
-    if (unlistenFsChange) unlistenFsChange();
+  onDestroy(async () => {
+    unregisterPaneRef(paneId);
+    if (_unlistenPromise) {
+      const unlisten = await _unlistenPromise;
+      unlisten();
+      _unlistenPromise = null;
+    }
+    if (watchedPath) {
+      invoke("unwatch_directory", { path: watchedPath }).catch(() => {});
+      watchedPath = null;
+    }
   });
 
   // ── Exports for parent (App.svelte keyboard shortcuts) ──
@@ -434,17 +513,28 @@
       onSwitchTab={handleSwitchTab}
       onCloseTab={handleCloseTab}
       onNewTab={handleNewTab}
-    />
-    <div class="pane-toolbar">
-      <Button onclick={() => addPane()} title="Add Pane">+ Pane</Button>
-      {#if paneCount > 1}
-        <Button onclick={() => removePane(paneId)} title="Close this pane">✕ Pane</Button>
-      {/if}
-      <Button onclick={() => toggleHiddenFiles()} title="Toggle Hidden Files (Ctrl+H)">
-        {showHidden ? "◉ Hidden" : "○ Hidden"}
-      </Button>
-      <div class="ptool-spacer"></div>
-    </div>
+    >
+      {#snippet actions()}
+        <ToolbarActions
+          {paneId}
+          {paneCount}
+          {showHidden}
+          viewMode={$settings.viewMode}
+          gridIconSize={$settings.gridIconSize}
+          onAddPane={() => addPane()}
+          onRemovePane={() => removePane(paneId)}
+          onToggleHidden={() => toggleHiddenFiles()}
+          onViewModeChange={(mode) => settings.update((s) => ({ ...s, viewMode: mode }))}
+          onIconSizeChange={(size) => settings.update((s) => ({ ...s, gridIconSize: size }))}
+        />
+      {/snippet}
+    </TabBar>
+    {#if isHome}
+      <HomeView
+        onNavigate={(p) => navigateTo(p)}
+        onOpenFile={openFile}
+      />
+    {:else}
     <BreadcrumbBar
       bind:this={breadcrumbBar}
       currentPath={tabData.path}
@@ -467,6 +557,22 @@
         <EmptyState type="loading" />
       {:else if tabData.errorMessage}
         <EmptyState type="error" message={tabData.errorMessage} />
+      {:else if $settings.viewMode === "grid"}
+        <GridView
+          bind:this={gridViewRef}
+          entries={tabData.entries}
+          currentPath={tabData.path}
+          sortByField={tabData.sortBy}
+          sortAscending={tabData.sortAsc}
+          {showHidden}
+          filterText={tabData.filterText}
+          {selectedPaths}
+          iconSize={$settings.gridIconSize}
+          onNavigate={(p) => navigateTo(p)}
+          onOpenFile={openFile}
+          onContextMenu={handleContextMenu}
+          onSelect={handleSelect}
+        />
       {:else}
         <FileList
           bind:this={fileListRef}
@@ -502,23 +608,24 @@
     {/if}
     <FilterBar
       bind:this={filterBar}
-      totalCount={fileListRef?.getTotalCount() ?? tabData.entries.length}
-      filteredCount={fileListRef?.getFilteredCount() ?? tabData.entries.length}
+      totalCount={$settings.viewMode === "grid" ? (gridViewRef?.getTotalCount() ?? tabData.entries.length) : (fileListRef?.getTotalCount() ?? tabData.entries.length)}
+      filteredCount={$settings.viewMode === "grid" ? (gridViewRef?.getFilteredCount() ?? tabData.entries.length) : (fileListRef?.getFilteredCount() ?? tabData.entries.length)}
       filterValue={tabData.filterText}
       onFilterChange={handleFilterChange}
     />
     <div class="bottom-bar">
       <StatusBar
-        itemCount={fileListRef?.getFilteredCount() ?? tabData.entries.length}
+        itemCount={$settings.viewMode === "grid" ? (gridViewRef?.getFilteredCount() ?? tabData.entries.length) : (fileListRef?.getFilteredCount() ?? tabData.entries.length)}
       />
       <FolderFilterBar
         bind:this={folderFilterBar}
-        totalCount={fileListRef?.getTotalCount() ?? tabData.entries.length}
-        filteredCount={fileListRef?.getFilteredCount() ?? tabData.entries.length}
+        totalCount={$settings.viewMode === "grid" ? (gridViewRef?.getTotalCount() ?? tabData.entries.length) : (fileListRef?.getTotalCount() ?? tabData.entries.length)}
+        filteredCount={$settings.viewMode === "grid" ? (gridViewRef?.getFilteredCount() ?? tabData.entries.length) : (fileListRef?.getFilteredCount() ?? tabData.entries.length)}
         filterValue={tabData.filterText}
         onFilterChange={handleFilterChange}
       />
     </div>
+    {/if}
   {/if}
 </div>
 
@@ -545,27 +652,12 @@
     border-color: var(--accent);
   }
 
-  .pane-toolbar {
-    display: flex;
-    align-items: center;
-    height: 26px;
-    padding: 0 6px;
-    gap: 2px;
-    background-color: var(--bg);
-    border-bottom: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-
   .bottom-bar {
     display: flex;
     align-items: center;
     flex-shrink: 0;
     background-color: var(--surface);
     border-top: 1px solid var(--border);
-  }
-
-  .ptool-spacer {
-    flex: 1;
   }
 
   .file-area {
@@ -579,5 +671,7 @@
     outline-offset: -2px;
     background-color: rgba(0, 180, 216, 0.05);
   }
+
+
 
 </style>

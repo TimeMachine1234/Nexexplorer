@@ -380,3 +380,158 @@ pub fn get_asset_url(path: String) -> Result<String, String> {
     // The frontend will use convertFileSrc from @tauri-apps/api
     Ok(path)
 }
+
+// ── Thumbnail generation ──
+
+const THUMB_IMAGE_EXTS: &[&str] = &["jpg", "jpeg", "png", "gif", "bmp", "webp"];
+const MAX_FILE_SIZE_FOR_THUMB: u64 = 50 * 1024 * 1024; // 50MB — skip huge images
+const MAX_CACHE_BYTES: u64 = 200 * 1024 * 1024; // 200MB — SSD protection
+
+fn thumb_cache_key(path: &str, modified_secs: u64, file_size: u64) -> String {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut h = DefaultHasher::new();
+    path.hash(&mut h);
+    modified_secs.hash(&mut h);
+    file_size.hash(&mut h);
+    format!("{:016x}", h.finish())
+}
+
+fn generate_single_thumb(path: &str, size: u32, cache_dir: &Path) -> Result<String, String> {
+    let p = Path::new(path);
+    let ext = p.extension()
+        .map(|e| e.to_string_lossy().to_lowercase())
+        .unwrap_or_default();
+    if !THUMB_IMAGE_EXTS.contains(&ext.as_str()) {
+        return Err(format!("Not a supported image type: {}", ext));
+    }
+
+    let meta = fs::metadata(p).map_err(|e| e.to_string())?;
+    if meta.len() > MAX_FILE_SIZE_FOR_THUMB {
+        return Err(format!("File too large for thumbnail: {} bytes", meta.len()));
+    }
+
+    let modified = meta.modified()
+        .ok()
+        .and_then(|m| m.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    let hash = thumb_cache_key(path, modified, meta.len());
+    let cache_path = cache_dir.join(format!("{}.jpg", hash));
+
+    if cache_path.exists() {
+        return Ok(cache_path.to_string_lossy().to_string());
+    }
+
+    let img = image::open(p).map_err(|e| format!("Failed to open image: {}", e))?;
+    let thumb = img.thumbnail(size, size);
+    // Convert to RGB8 to avoid JPEG encoding issues with transparent images
+    let rgb = image::DynamicImage::ImageRgb8(thumb.to_rgb8());
+    rgb.save(&cache_path).map_err(|e| format!("Failed to save thumbnail: {}", e))?;
+
+    Ok(cache_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn generate_thumbnail(app: tauri::AppHandle, path: String, size: u32) -> Result<String, String> {
+    use tauri::Manager;
+    let cache_dir = app.path().app_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("thumbcache");
+    fs::create_dir_all(&cache_dir).map_err(|e| e.to_string())?;
+    generate_single_thumb(&path, size, &cache_dir)
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct ThumbResult {
+    pub path: String,
+    pub thumb_path: Option<String>,
+    pub error: Option<String>,
+}
+
+#[tauri::command]
+pub fn generate_thumbnails_batch(app: tauri::AppHandle, paths: Vec<String>, size: u32) -> Vec<ThumbResult> {
+    use rayon::prelude::*;
+    use tauri::Manager;
+
+    let cache_dir = match app.path().app_data_dir().map(|d| d.join("thumbcache")) {
+        Ok(d) => { let _ = fs::create_dir_all(&d); d }
+        Err(e) => return paths.into_iter().map(|path| ThumbResult {
+            path, thumb_path: None, error: Some(e.to_string()),
+        }).collect(),
+    };
+
+    let mut results = Vec::with_capacity(paths.len());
+    let parallel: Vec<ThumbResult> = paths.par_iter().map(|path| {
+        match generate_single_thumb(path, size, &cache_dir) {
+            Ok(tp) => ThumbResult { path: path.clone(), thumb_path: Some(tp), error: None },
+            Err(e) => ThumbResult { path: path.clone(), thumb_path: None, error: Some(e) },
+        }
+    }).collect();
+    results.extend(parallel);
+    results
+}
+
+#[tauri::command]
+pub fn get_thumbnail_cache_size(app: tauri::AppHandle) -> Result<u64, String> {
+    use tauri::Manager;
+    let cache_dir = app.path().app_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("thumbcache");
+    if !cache_dir.exists() { return Ok(0); }
+    let total = fs::read_dir(&cache_dir)
+        .map_err(|e| e.to_string())?
+        .filter_map(|e| e.ok())
+        .filter_map(|e| e.metadata().ok())
+        .map(|m| m.len())
+        .sum();
+    Ok(total)
+}
+
+#[tauri::command]
+pub fn clear_thumbnail_cache(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    let cache_dir = app.path().app_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("thumbcache");
+    if cache_dir.exists() {
+        fs::remove_dir_all(&cache_dir).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+/// Evicts oldest thumbnails when cache exceeds 200MB. Call on startup.
+#[tauri::command]
+pub fn cleanup_thumbnail_cache(app: tauri::AppHandle) -> Result<u64, String> {
+    use tauri::Manager;
+    let cache_dir = app.path().app_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("thumbcache");
+    if !cache_dir.exists() { return Ok(0); }
+
+    let mut entries: Vec<(std::path::PathBuf, u64, std::time::SystemTime)> = fs::read_dir(&cache_dir)
+        .map_err(|e| e.to_string())?
+        .filter_map(|e| e.ok())
+        .filter_map(|e| {
+            let meta = e.metadata().ok()?;
+            let modified = meta.modified().ok()?;
+            Some((e.path(), meta.len(), modified))
+        })
+        .collect();
+
+    let total: u64 = entries.iter().map(|(_, s, _)| s).sum();
+    if total <= MAX_CACHE_BYTES { return Ok(0); }
+
+    entries.sort_by_key(|(_, _, m)| *m);
+    let mut freed = 0u64;
+    let mut remaining = total;
+    for (path, size, _) in entries {
+        if remaining <= MAX_CACHE_BYTES { break; }
+        if fs::remove_file(&path).is_ok() {
+            freed += size;
+            remaining -= size;
+        }
+    }
+    Ok(freed)
+}

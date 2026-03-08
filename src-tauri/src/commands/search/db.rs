@@ -1,5 +1,4 @@
 use lazy_static::lazy_static;
-use notify::RecommendedWatcher;
 use rusqlite::{params, Connection};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -16,7 +15,6 @@ pub(crate) struct IndexState {
     pub total_files: u64,
     pub last_updated: Option<f64>,
     pub cancel_flag: Arc<std::sync::atomic::AtomicBool>,
-    pub _watcher: Option<RecommendedWatcher>,
 }
 
 lazy_static! {
@@ -167,7 +165,6 @@ pub(crate) fn ensure_state() {
             total_files,
             last_updated: None,
             cancel_flag: Arc::new(std::sync::atomic::AtomicBool::new(false)),
-            _watcher: None,
         });
     }
 }

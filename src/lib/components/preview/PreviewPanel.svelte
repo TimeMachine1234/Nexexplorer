@@ -4,6 +4,7 @@
   import { onDestroy, untrack } from "svelte";
   import PreviewToolbar from "./PreviewToolbar.svelte";
   import PreviewBody from "./PreviewBody.svelte";
+  import { previewFileContext, previewArrowPath } from "../../stores/preview";
 
   interface FileMetadata {
     name: string;
@@ -42,9 +43,10 @@
   interface Props {
     filePath: string | null;
     onClose: () => void;
+    onNavigate?: (path: string) => void;
   }
 
-  let { filePath, onClose }: Props = $props();
+  let { filePath, onClose, onNavigate }: Props = $props();
 
   let metadata: FileMetadata | null = $state(null);
   let textContent: TextPreview | null = $state(null);
@@ -259,23 +261,29 @@
   }
 
   onDestroy(() => {
-    if (_loadDebounce) clearTimeout(_loadDebounce);
+    if (_wheelRaf) { cancelAnimationFrame(_wheelRaf); _wheelRaf = null; }
+    if (_loadDebounce) { clearTimeout(_loadDebounce); _loadDebounce = null; }
     cleanupActiveMedia();
-    metadata = null; textContent = null; archiveData = null; imageUrl = "";
+    imageUrl = "";
+    metadata = null; textContent = null; archiveData = null;
   });
 
   $effect(() => {
-    const currentPath = filePath;
-    untrack(() => {
+    const currentPath = filePath; // only filePath is tracked as a dependency
+    return untrack(() => {
       if (_loadDebounce) clearTimeout(_loadDebounce);
+      cleanupActiveMedia();      // reads videoEl/imgEl — must be untracked
+      imageUrl = "";             // release previous decoded media immediately
+      previewType = "none";      // drop stale media element before new load
       if (currentPath) {
-        cleanupActiveMedia();
         resetImageState(); resetVideoState(); resetTextState();
         _loadDebounce = setTimeout(() => { loadPreview(currentPath); }, 50);
       } else {
-        cleanupActiveMedia();
         resetState();
       }
+      return () => {
+        if (_loadDebounce) { clearTimeout(_loadDebounce); _loadDebounce = null; }
+      };
     });
   });
 
@@ -363,7 +371,33 @@
       default: return ext.toUpperCase() + " Document";
     }
   }
+
+  function onKeyDown(e: KeyboardEvent) {
+    const ctx = $previewFileContext;
+    if (!ctx || !onNavigate) return;
+    if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const idx = ctx.files.findIndex((f) => f.path === ctx.currentPath);
+      if (idx > 0) {
+        const newPath = ctx.files[idx - 1].path;
+        onNavigate(newPath);
+        previewFileContext.set({ ...ctx, currentPath: newPath });
+        previewArrowPath.set(newPath);
+      }
+    } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+      e.preventDefault();
+      const idx = ctx.files.findIndex((f) => f.path === ctx.currentPath);
+      if (idx < ctx.files.length - 1) {
+        const newPath = ctx.files[idx + 1].path;
+        onNavigate(newPath);
+        previewFileContext.set({ ...ctx, currentPath: newPath });
+        previewArrowPath.set(newPath);
+      }
+    }
+  }
 </script>
+
+<svelte:window on:keydown={onKeyDown} />
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="preview-panel" bind:this={panelEl} style="width: {panelWidth}px" class:resizing={isResizing}>
@@ -433,7 +467,7 @@
     onVideoLoaded={onVideoLoadedMeta}
     {onVideoSeek}
     onVideoCleanup={videoCleanup}
-    {onOpenWithSystem}
+    onOpenWithSystem={openWithSystem}
     {formatBytes} {formatTime} {getDocIcon} {getDocLabel}
   />
 

@@ -1,6 +1,8 @@
+use lazy_static::lazy_static;
+use notify::RecommendedWatcher;
 use rusqlite::{params, Connection};
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Instant, SystemTime};
 
@@ -9,6 +11,10 @@ use super::db::{
     system_time_to_epoch, MAX_FILE_SIZE_FOR_CONTENT, INDEX,
 };
 use walkdir::WalkDir;
+
+lazy_static! {
+    static ref INDEX_WATCHER: Mutex<Option<RecommendedWatcher>> = Mutex::new(None);
+}
 
 // ---------------------------------------------------------------------------
 // Indexing (Layer 1 + 3)
@@ -358,6 +364,12 @@ pub fn start_indexing(paths: Vec<String>) -> Result<(), String> {
             total, elapsed, paths_clone,
             if is_incremental { "incremental" } else { "full scan" }
         );
+
+        // Start the index watcher now that we have a fresh index (only starts once)
+        let watcher_paths = paths_clone.clone();
+        thread::spawn(move || {
+            start_index_watcher_internal(watcher_paths);
+        });
     });
 
     state.indexed_paths = paths;
@@ -389,119 +401,111 @@ pub fn stop_indexing() -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
-pub fn start_file_watcher(app: tauri::AppHandle, paths: Vec<String>) -> Result<(), String> {
+// Internal index watcher — keeps SQLite fresh after indexing completes.
+// Silent (no frontend events), 5s debounce, recursive on indexed paths.
+// Only starts once — subsequent calls are no-ops.
+fn start_index_watcher_internal(paths: Vec<String>) {
     use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
     use std::sync::mpsc;
-    use tauri::Emitter;
 
-    ensure_state();
+    // Only start one index watcher for the app lifetime
+    {
+        let guard = INDEX_WATCHER.lock().unwrap();
+        if guard.is_some() {
+            return;
+        }
+    }
 
     let db_path_val = db_path();
 
     let (tx, rx) = mpsc::channel::<notify::Result<Event>>();
 
-    let mut watcher = RecommendedWatcher::new(tx, Config::default())
-        .map_err(|e| format!("Failed to create watcher: {}", e))?;
+    let mut watcher = match RecommendedWatcher::new(tx, Config::default()) {
+        Ok(w) => w,
+        Err(e) => {
+            eprintln!("[index-watcher] Failed to create: {}", e);
+            return;
+        }
+    };
 
     for p in &paths {
-        watcher
-            .watch(Path::new(p), RecursiveMode::Recursive)
-            .map_err(|e| format!("Failed to watch {}: {}", p, e))?;
-    }
-
-    let app_handle = app.clone();
-
-    thread::spawn(move || {
-        let conn = match Connection::open(&db_path_val) {
-            Ok(c) => c,
-            Err(_) => return,
-        };
-        init_db(&conn);
-
-        let mut pending_upserts: std::collections::HashSet<PathBuf> = std::collections::HashSet::new();
-        let mut pending_removes: std::collections::HashSet<PathBuf> = std::collections::HashSet::new();
-        let mut last_flush = Instant::now();
-        let debounce_ms: u128 = 1000;
-
-        loop {
-            match rx.recv_timeout(std::time::Duration::from_millis(500)) {
-                Ok(Ok(event)) => {
-                    use notify::EventKind;
-                    match event.kind {
-                        EventKind::Create(_) | EventKind::Modify(_) => {
-                            for p in event.paths {
-                                pending_upserts.insert(p);
-                            }
-                        }
-                        EventKind::Remove(_) => {
-                            for p in event.paths {
-                                pending_removes.insert(p);
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                Ok(Err(_)) => {}
-                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {}
-                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
-            }
-
-            if last_flush.elapsed().as_millis() >= debounce_ms
-                && (!pending_upserts.is_empty() || !pending_removes.is_empty())
-            {
-                let upsert_count = pending_upserts.len();
-                let remove_count = pending_removes.len();
-
-                let mut changed_dirs: std::collections::HashSet<String> = std::collections::HashSet::new();
-                for p in &pending_upserts {
-                    if let Some(parent) = p.parent() {
-                        changed_dirs.insert(parent.to_string_lossy().to_string());
-                    }
-                }
-                for p in &pending_removes {
-                    if let Some(parent) = p.parent() {
-                        changed_dirs.insert(parent.to_string_lossy().to_string());
-                    }
-                }
-
-                conn.execute_batch("BEGIN").ok();
-                for p in pending_removes.drain() {
-                    remove_single(&conn, &p);
-                }
-                for p in pending_upserts.drain() {
-                    upsert_single(&conn, &p);
-                }
-                conn.execute_batch("COMMIT").ok();
-
-                if upsert_count + remove_count > 0 {
-                    eprintln!(
-                        "[watcher] Flushed {} upserts + {} removes in one transaction",
-                        upsert_count, remove_count
-                    );
-
-                    let dirs_vec: Vec<String> = changed_dirs.into_iter().collect();
-                    app_handle.emit("fs-change", dirs_vec).ok();
-                }
-
-                if let Ok(mut guard) = INDEX.lock() {
-                    if let Some(state) = guard.as_mut() {
-                        state.total_files = state
-                            .db
-                            .query_row("SELECT COUNT(*) FROM files", [], |row| row.get(0))
-                            .unwrap_or(state.total_files);
-                    }
-                }
-
-                last_flush = Instant::now();
-            }
+        if let Err(e) = watcher.watch(Path::new(p), RecursiveMode::Recursive) {
+            eprintln!("[index-watcher] Failed to watch {}: {}", p, e);
         }
-    });
-
-    let mut guard = INDEX.lock().unwrap();
-    if let Some(state) = guard.as_mut() {
-        state._watcher = Some(watcher);
     }
 
-    Ok(())
+    *INDEX_WATCHER.lock().unwrap() = Some(watcher);
+    eprintln!("[index-watcher] Started watching {:?}", paths);
+
+    let conn = match Connection::open(&db_path_val) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("[index-watcher] Failed to open DB: {}", e);
+            *INDEX_WATCHER.lock().unwrap() = None;
+            return;
+        }
+    };
+    init_db(&conn);
+
+    let mut pending_upserts: std::collections::HashSet<PathBuf> = std::collections::HashSet::new();
+    let mut pending_removes: std::collections::HashSet<PathBuf> = std::collections::HashSet::new();
+    let mut last_flush = Instant::now();
+    const DEBOUNCE_MS: u128 = 5_000; // 5s — SSD protection
+
+    loop {
+        match rx.recv_timeout(std::time::Duration::from_millis(500)) {
+            Ok(Ok(event)) => {
+                use notify::EventKind;
+                match event.kind {
+                    EventKind::Create(_) | EventKind::Modify(_) => {
+                        for p in event.paths {
+                            pending_upserts.insert(p);
+                        }
+                    }
+                    EventKind::Remove(_) => {
+                        for p in event.paths {
+                            pending_removes.insert(p);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            Ok(Err(_)) => {}
+            Err(mpsc::RecvTimeoutError::Timeout) => {}
+            Err(mpsc::RecvTimeoutError::Disconnected) => break,
+        }
+
+        if last_flush.elapsed().as_millis() >= DEBOUNCE_MS
+            && (!pending_upserts.is_empty() || !pending_removes.is_empty())
+        {
+            let upsert_count = pending_upserts.len();
+            let remove_count = pending_removes.len();
+
+            conn.execute_batch("BEGIN").ok();
+            for p in pending_removes.drain() {
+                remove_single(&conn, &p);
+            }
+            for p in pending_upserts.drain() {
+                upsert_single(&conn, &p);
+            }
+            conn.execute_batch("COMMIT").ok();
+
+            eprintln!(
+                "[index-watcher] Flushed {} upserts + {} removes",
+                upsert_count, remove_count
+            );
+
+            if let Ok(mut guard) = INDEX.lock() {
+                if let Some(state) = guard.as_mut() {
+                    state.total_files = conn
+                        .query_row("SELECT COUNT(*) FROM files", [], |row| row.get(0))
+                        .unwrap_or(state.total_files);
+                }
+            }
+
+            last_flush = Instant::now();
+        }
+    }
+
+    eprintln!("[index-watcher] Thread exiting");
 }

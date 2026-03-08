@@ -2,6 +2,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { convertFileSrc } from "@tauri-apps/api/core";
   import { onDestroy, untrack } from "svelte";
+  import { previewFileContext, previewArrowPath } from "../../stores/preview";
   import AudioPlayer from "./AudioPlayer.svelte";
   import ImagePreview from "./ImagePreview.svelte";
   import PdfPreview from "./PdfPreview.svelte";
@@ -31,15 +32,26 @@
   interface Props {
     filePath: string;
     onClose: () => void;
+    onNavigate?: (path: string) => void;
   }
 
-  let { filePath, onClose }: Props = $props();
+  let { filePath, onClose, onNavigate }: Props = $props();
 
   let metadata: FileMetadata | null = $state(null);
   let textContent: TextPreview | null = $state(null);
   let assetUrl: string = $state("");
   let loading: boolean = $state(true);
   let previewType: "image" | "text" | "video" | "audio" | "pdf" | "document" | "none" = $state("none");
+
+  function onSelectFile(newPath: string) {
+    if (onNavigate) {
+      onNavigate(newPath);
+      // Update the context to track the new selection for continued arrow navigation
+      const ctx = $previewFileContext;
+      if (ctx) previewFileContext.set({ ...ctx, currentPath: newPath });
+      previewArrowPath.set(newPath);
+    }
+  }
 
   let _loadDebounce: ReturnType<typeof setTimeout> | null = null;
   let _videoEl: HTMLVideoElement | null = null;
@@ -177,7 +189,30 @@
   }
 </script>
 
-<svelte:window on:keydown={(e) => { if (e.key === "Escape" || e.key === " ") { e.preventDefault(); onClose(); }}} />
+<svelte:window on:keydown={(e) => {
+  if (e.key === "Escape" || e.key === " ") { e.preventDefault(); onClose(); }
+  const ctx = $previewFileContext;
+  if (!ctx) return;
+  if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const idx = ctx.files.findIndex((f) => f.path === ctx.currentPath);
+    if (idx > 0) {
+      const newPath = ctx.files[idx - 1].path;
+      onSelectFile(newPath);
+      previewFileContext.set({ ...ctx, currentPath: newPath });
+      previewArrowPath.set(newPath);
+    }
+  } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+    e.preventDefault();
+    const idx = ctx.files.findIndex((f) => f.path === ctx.currentPath);
+    if (idx < ctx.files.length - 1) {
+      const newPath = ctx.files[idx + 1].path;
+      onSelectFile(newPath);
+      previewFileContext.set({ ...ctx, currentPath: newPath });
+      previewArrowPath.set(newPath);
+    }
+  }
+}} />
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->

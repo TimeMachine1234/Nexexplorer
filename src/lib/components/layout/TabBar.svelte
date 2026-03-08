@@ -2,7 +2,8 @@
   import type { TabState } from "../../stores/panes";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { invoke } from "@tauri-apps/api/core";
-  import { onMount, onDestroy } from "svelte";
+  import WindowControls from "./WindowControls.svelte";
+  import type { Snippet } from "svelte";
 
   interface Props {
     tabs: TabState[];
@@ -11,44 +12,22 @@
     onSwitchTab: (tabId: string) => void;
     onCloseTab: (tabId: string) => void;
     onNewTab: () => void;
+    actions?: Snippet;
   }
 
-  let { tabs, activeTabId, showWindowControls = false, onSwitchTab, onCloseTab, onNewTab }: Props = $props();
+  let { tabs, activeTabId, showWindowControls = false, onSwitchTab, onCloseTab, onNewTab, actions }: Props = $props();
 
   const appWindow = getCurrentWindow();
-  let maxBtnEl: HTMLButtonElement = $state()!;
-  let resizeObserver: ResizeObserver;
-
-  function syncMaxBtnRect() {
-    if (!maxBtnEl) return;
-    const rect = maxBtnEl.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    invoke('set_maximize_button_rect', {
-      left: Math.round(rect.left * dpr),
-      top: Math.round(rect.top * dpr),
-      right: Math.round(rect.right * dpr),
-      bottom: Math.round(rect.bottom * dpr),
-    }).catch(() => {});
-  }
-
-  onMount(() => {
-    if (showWindowControls) {
-      resizeObserver = new ResizeObserver(() => syncMaxBtnRect());
-      if (maxBtnEl) resizeObserver.observe(maxBtnEl);
-      window.addEventListener('resize', syncMaxBtnRect);
-      // Give layout a moment to settle
-      setTimeout(syncMaxBtnRect, 100);
-    }
-  });
-
-  onDestroy(() => {
-    if (resizeObserver) resizeObserver.disconnect();
-    window.removeEventListener('resize', syncMaxBtnRect);
-  });
 
   function getTabLabel(tab: TabState): string {
+    if (tab.path === "~home") return "Home";
     const parts = tab.path.replace(/\\$/, "").split("\\");
     return parts[parts.length - 1] || tab.path;
+  }
+
+  function getTabIcon(tab: TabState): string {
+    if (tab.path === "~home") return "🏠";
+    return "📁";
   }
 
   function handleMiddleClick(e: MouseEvent, tabId: string) {
@@ -56,7 +35,7 @@
   }
 
   function handleDragStart(e: MouseEvent) {
-    if ((e.target as HTMLElement).closest("button, .tab")) return;
+    if ((e.target as HTMLElement).closest("button, .tab, .toolbar-actions, input")) return;
     appWindow.startDragging();
   }
 
@@ -79,37 +58,34 @@
         role="tab"
         tabindex="0"
       >
+        <span class="tab-icon">{getTabIcon(tab)}</span>
         <span class="tab-label">{getTabLabel(tab)}</span>
         {#if tabs.length > 1}
           <button
             class="tab-close"
             onclick={(e) => { e.stopPropagation(); onCloseTab(tab.id); }}
             title="Close tab"
-          >✕</button>
+          >
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
+              <path d="M1 1l6 6M7 1l-6 6"/>
+            </svg>
+          </button>
         {/if}
       </div>
     {/each}
   </div>
-  <button class="tab-new" onclick={onNewTab} title="New tab (Ctrl+T)">+</button>
+  <button class="tab-new" onclick={onNewTab} title="New tab (Ctrl+T)">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+      <path d="M6 1v10M1 6h10"/>
+    </svg>
+  </button>
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="drag-spacer" ondblclick={handleDragSpacerDblClick}></div>
+  {#if actions}
+    {@render actions()}
+  {/if}
   {#if showWindowControls}
-    <div class="window-controls">
-      <button class="win-btn" onclick={() => appWindow.minimize()} title="Minimize">
-        <svg width="10" height="1" viewBox="0 0 10 1"><rect width="10" height="1" fill="currentColor"/></svg>
-      </button>
-      <button
-        bind:this={maxBtnEl}
-        class="win-btn maximize"
-        onclick={() => appWindow.toggleMaximize()}
-        title="Maximize"
-      >
-        <svg width="10" height="10" viewBox="0 0 10 10"><rect width="10" height="10" fill="none" stroke="currentColor" stroke-width="1"/></svg>
-      </button>
-      <button class="win-btn close" onclick={() => appWindow.close()} title="Close">
-        <svg width="10" height="10" viewBox="0 0 10 10"><line x1="0" y1="0" x2="10" y2="10" stroke="currentColor" stroke-width="1.2"/><line x1="10" y1="0" x2="0" y2="10" stroke="currentColor" stroke-width="1.2"/></svg>
-      </button>
-    </div>
+    <WindowControls />
   {/if}
 </div>
 
@@ -117,12 +93,11 @@
   .tab-bar {
     display: flex;
     align-items: center;
-    height: 32px;
-    background-color: var(--bg);
+    height: 36px;
+    background: var(--bg);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
-    padding: 0 4px;
-    gap: 2px;
+    padding: 0 8px;
     user-select: none;
     -webkit-user-select: none;
   }
@@ -130,7 +105,6 @@
   .tabs-scroll {
     display: flex;
     align-items: center;
-    gap: 1px;
     overflow-x: auto;
     min-width: 0;
   }
@@ -140,29 +114,39 @@
   .tab {
     display: flex;
     align-items: center;
-    gap: 4px;
-    height: 26px;
-    padding: 0 10px;
+    gap: 6px;
+    height: 28px;
+    padding: 0 12px;
     border: none;
-    border-radius: 4px 4px 0 0;
-    background: var(--surface);
+    border-radius: 6px;
+    background: transparent;
     color: var(--text-muted);
-    font-size: 12px;
+    font-size: 12.5px;
     font-family: inherit;
     cursor: pointer;
     white-space: nowrap;
-    max-width: 180px;
+    max-width: 220px;
     min-width: 80px;
-    transition: background-color 0.1s, color 0.1s;
+    transition: background-color 0.15s, color 0.15s;
     flex-shrink: 0;
+    position: relative;
+    margin: 0 1px;
   }
 
-  .tab:hover { background: var(--surface-high); color: var(--text); }
-
-  .tab.active {
+  .tab:hover {
     background: var(--surface-high);
     color: var(--text);
-    border-bottom: 2px solid var(--accent);
+  }
+
+  .tab.active {
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .tab-icon {
+    font-size: 13px;
+    line-height: 1;
+    flex-shrink: 0;
   }
 
   .tab-label {
@@ -173,49 +157,8 @@
   }
 
   .tab-close {
-    width: 16px;
-    height: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    background: none;
-    color: var(--text-dim);
-    font-size: 10px;
-    cursor: pointer;
-    border-radius: 3px;
-    flex-shrink: 0;
-    font-family: inherit;
-    padding: 0;
-  }
-
-  .tab-close:hover { background: var(--border); color: var(--text); }
-
-  .tab-new {
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    background: none;
-    color: var(--text-dim);
-    font-size: 16px;
-    cursor: pointer;
-    border-radius: 4px;
-    flex-shrink: 0;
-    font-family: inherit;
-  }
-
-  .tab-new:hover { background: var(--surface-high); color: var(--text); }
-
-  .drag-spacer { flex: 1; height: 100%; }
-
-  .window-controls { display: flex; height: 100%; flex-shrink: 0; }
-
-  .win-btn {
-    width: 46px;
-    height: 100%;
+    width: 18px;
+    height: 18px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -223,9 +166,44 @@
     background: none;
     color: var(--text-muted);
     cursor: pointer;
-    transition: background-color 0.1s;
+    border-radius: 50%;
+    flex-shrink: 0;
+    font-family: inherit;
+    padding: 0;
+    opacity: 0;
+    transition: opacity 0.15s, background-color 0.15s, color 0.15s;
   }
 
-  .win-btn:hover { background-color: var(--surface-high); color: var(--text); }
-  .win-btn.close:hover { background-color: #e81123; color: white; }
+  .tab:hover .tab-close,
+  .tab.active .tab-close {
+    opacity: 1;
+  }
+
+  .tab-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text);
+  }
+
+  .tab-new {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: 50%;
+    flex-shrink: 0;
+    font-family: inherit;
+    transition: background-color 0.15s, color 0.15s;
+  }
+
+  .tab-new:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text);
+  }
+
+  .drag-spacer { flex: 1; height: 100%; min-width: 20px; }
 </style>

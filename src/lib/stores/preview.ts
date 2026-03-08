@@ -1,7 +1,22 @@
-import { writable, derived } from "svelte/store";
+import { writable } from "svelte/store";
+import type { FileEntry } from "./panes";
+
+export interface PreviewFileEntry extends FileEntry {
+  path: string;
+}
 
 // Tracks the currently selected file path for preview purposes
 export const selectedFileForPreview = writable<string | null>(null);
+
+// Tracks the file list context for preview navigation (arrow keys)
+export const previewFileContext = writable<{
+  files: PreviewFileEntry[];
+  currentPath: string | null;
+} | null>(null);
+
+// Set ONLY by arrow key navigation in preview — used to move the file list highlight.
+// Never set by click handlers, so no circular dependency is possible.
+export const previewArrowPath = writable<string | null>(null);
 
 // Debounced version — waits 150ms of inactivity before emitting.
 // This prevents preview loads when the user cycles through files quickly.

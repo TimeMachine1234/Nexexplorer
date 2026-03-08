@@ -7,6 +7,7 @@
     getActiveTab,
   } from "../../stores/panes";
   import { clipboard, startTransfer } from "../../stores/transfers";
+  import { pinnedFolders } from "../../stores/sidebar";
 
   interface Props {
     paneId: string;
@@ -138,6 +139,12 @@
 
     if (contextEntry?.is_dir && contextPath) {
       items.push({ label: "Open", action: () => onNavigate(contextPath) });
+      const alreadyPinned = get(pinnedFolders).some((p) => p.path === contextPath);
+      if (alreadyPinned) {
+        items.push({ label: "Unpin from Sidebar", action: () => pinnedFolders.unpin(contextPath) });
+      } else {
+        items.push({ label: "Pin to Sidebar", action: () => pinnedFolders.pin(contextPath) });
+      }
       items.push({ divider: true });
     }
 

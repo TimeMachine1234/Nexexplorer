@@ -1,4 +1,6 @@
 <script lang="ts">
+  import NavigationButtons from "./NavigationButtons.svelte";
+
   interface Props {
     currentPath: string;
     canBack: boolean;
@@ -38,7 +40,6 @@
   function startEditing() {
     isEditing = true;
     editValue = currentPath;
-    // Focus the input after it renders
     setTimeout(() => inputEl?.select(), 0);
   }
 
@@ -63,33 +64,17 @@
 </script>
 
 <div class="breadcrumb-bar">
-  <div class="nav-buttons">
-    <button
-      class="nav-btn"
-      onclick={onGoBack}
-      disabled={!canBack}
-      title="Back (Alt+Left)"
-    >
-      ←
-    </button>
-    <button
-      class="nav-btn"
-      onclick={onGoForward}
-      disabled={!canForward}
-      title="Forward (Alt+Right)"
-    >
-      →
-    </button>
-    <button
-      class="nav-btn"
-      onclick={onGoUp}
-      title="Up (Backspace)"
-    >
-      ↑
-    </button>
-  </div>
+  <NavigationButtons
+    {canBack}
+    {canForward}
+    {onGoBack}
+    {onGoForward}
+    {onGoUp}
+  />
 
-  <div class="path-area" onclick={startEditing}>
+  <!-- svelte-ignore a11y_click_events_have_key_events -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
+  <div class="path-area" class:editing={isEditing} onclick={startEditing}>
     {#if isEditing}
       <input
         bind:this={inputEl}
@@ -103,7 +88,9 @@
       <div class="segments">
         {#each segments() as seg, i}
           {#if i > 0}
-            <span class="separator">›</span>
+            <svg class="chevron" width="12" height="12" viewBox="0 0 16 16" fill="none">
+              <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
           {/if}
           <button class="segment" onclick={(e) => { e.stopPropagation(); onNavigate(seg.path); }}>
             {seg.label}
@@ -118,56 +105,35 @@
   .breadcrumb-bar {
     display: flex;
     align-items: center;
-    height: 40px;
-    padding: 0 8px;
-    background-color: var(--surface);
+    height: 32px;
+    padding: 0 6px;
+    background-color: var(--bg);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
     gap: 4px;
   }
 
-  .nav-buttons {
-    display: flex;
-    gap: 2px;
-    flex-shrink: 0;
-  }
-
-  .nav-btn {
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    background: var(--surface-high);
-    color: var(--text);
-    font-size: 14px;
-    cursor: pointer;
-    transition: background-color 0.1s;
-    font-family: inherit;
-  }
-
-  .nav-btn:hover:not(:disabled) {
-    background-color: var(--border);
-  }
-
-  .nav-btn:disabled {
-    opacity: 0.3;
-    cursor: default;
-  }
-
   .path-area {
     flex: 1;
     min-width: 0;
-    height: 28px;
+    height: 24px;
     display: flex;
     align-items: center;
-    background-color: var(--surface-high);
-    border: 1px solid var(--border);
+    background-color: transparent;
+    border: 1px solid transparent;
     border-radius: 4px;
-    padding: 0 8px;
+    padding: 0 6px;
     cursor: text;
+    transition: background-color 0.1s, border-color 0.1s;
+  }
+
+  .path-area:hover {
+    background-color: var(--surface);
+  }
+
+  .path-area.editing {
+    background-color: var(--surface);
+    border-color: var(--accent);
   }
 
   .path-input {
@@ -176,7 +142,7 @@
     border: none;
     background: none;
     color: var(--text);
-    font-size: 13px;
+    font-size: 12px;
     font-family: inherit;
     outline: none;
   }
@@ -184,32 +150,36 @@
   .segments {
     display: flex;
     align-items: center;
-    gap: 2px;
+    gap: 1px;
     overflow: hidden;
     white-space: nowrap;
   }
 
-  .separator {
+  .chevron {
     color: var(--text-dim);
-    font-size: 12px;
     flex-shrink: 0;
+    margin: 0 1px;
   }
 
   .segment {
     border: none;
     background: none;
-    color: var(--text);
-    font-size: 13px;
+    color: var(--text-muted);
+    font-size: 12px;
     padding: 2px 4px;
     border-radius: 3px;
     cursor: pointer;
     font-family: inherit;
     white-space: nowrap;
-    transition: background-color 0.1s;
+    transition: background-color 0.1s, color 0.1s;
   }
 
   .segment:hover {
-    background-color: var(--border);
-    color: var(--accent);
+    background-color: var(--surface-high);
+    color: var(--text);
+  }
+
+  .segment:last-child {
+    color: var(--text);
   }
 </style>

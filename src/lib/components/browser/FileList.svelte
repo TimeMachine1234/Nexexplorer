@@ -1,7 +1,8 @@
 <script lang="ts">
   import FileItem from "./FileItem.svelte";
   import type { SortField } from "../../stores/panes";
-  import { applyFolderFilter, getNameTokens } from "../../utils/folderFilter";
+  import { getNameTokens } from "../../utils/folderFilter";
+  import { processEntries } from "../../utils/entryProcessing";
 
   interface FileEntry {
     name: string;
@@ -41,69 +42,29 @@
     return sortAscending ? " ▲" : " ▼";
   }
 
-  // Filter → hide hidden → sort
-  let processedEntries = $derived(() => {
-    let result = [...entries];
-
-    // Filter hidden files
-    if (!showHidden) {
-      result = result.filter((e) => !e.is_hidden);
-    }
-
-    // Filter by text (smart folder filter)
-    if (filterText.trim()) {
-      result = applyFolderFilter(result, filterText);
-    }
-
-    // Sort: folders first always, then by field
-    result.sort((a, b) => {
-      if (a.is_dir && !b.is_dir) return -1;
-      if (!a.is_dir && b.is_dir) return 1;
-
-      let cmp = 0;
-      switch (sortByField) {
-        case "name":
-          cmp = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
-          break;
-        case "size":
-          cmp = a.size - b.size;
-          break;
-        case "modified":
-          cmp = a.modified.localeCompare(b.modified);
-          break;
-        case "type":
-          cmp = a.extension.localeCompare(b.extension);
-          if (cmp === 0) cmp = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
-          break;
-      }
-      return sortAscending ? cmp : -cmp;
-    });
-
-    return result;
-  });
+  let processedEntries = $derived(
+    processEntries(entries, showHidden, filterText, sortByField, sortAscending)
+  );
 
   export function getTotalCount(): number {
-    if (!showHidden) {
-      return entries.filter((e) => !e.is_hidden).length;
-    }
-    return entries.length;
+    return showHidden ? entries.length : entries.filter((e) => !e.is_hidden).length;
   }
 
   export function getFilteredCount(): number {
-    return processedEntries().length;
+    return processedEntries.length;
   }
 
-  let totalHeight = $derived(processedEntries().length * ROW_HEIGHT);
+  let totalHeight = $derived(processedEntries.length * ROW_HEIGHT);
 
   let startIndex = $derived(Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN));
   let endIndex = $derived(
     Math.min(
-      processedEntries().length,
+      processedEntries.length,
       Math.ceil((scrollTop + containerHeight) / ROW_HEIGHT) + OVERSCAN
     )
   );
 
-  let visibleEntries = $derived(processedEntries().slice(startIndex, endIndex));
+  let visibleEntries = $derived(processedEntries.slice(startIndex, endIndex));
   let offsetY = $derived(startIndex * ROW_HEIGHT);
 
   function handleScroll(e: Event) {

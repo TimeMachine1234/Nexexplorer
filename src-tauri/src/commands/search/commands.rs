@@ -6,7 +6,7 @@ use super::engine::{
     append_filter_conditions, fuzzy_score, get_frecency_score, path_rank_boost,
     search_content_parallel,
 };
-use super::types::{IndexStatus, SearchHistoryEntry, SearchQuery, SearchResult};
+use super::types::{IndexStatus, SearchHistoryEntry, SearchQuery, SearchResult, RecentFileEntry};
 use super::types::{parse_smart_query, type_to_extensions};
 
 // ---------------------------------------------------------------------------
@@ -206,6 +206,13 @@ pub fn search_files(query: SearchQuery) -> Result<Vec<SearchResult>, String> {
             "INSERT INTO search_history (query, timestamp, result_count) VALUES (?1, ?2, ?3)",
             params![raw_query, now, result_count],
         ).ok();
+        // Keep only the most recent 200 entries to prevent unbounded growth
+        state.db.execute(
+            "DELETE FROM search_history WHERE id NOT IN (
+                SELECT id FROM search_history ORDER BY timestamp DESC LIMIT 200
+            )",
+            [],
+        ).ok();
     }
 
     Ok(results)
@@ -261,8 +268,14 @@ pub fn clear_index() -> Result<(), String> {
 #[tauri::command]
 pub fn record_file_open(path: String) -> Result<(), String> {
     ensure_state();
-    let guard = INDEX.lock().unwrap();
-    let state = guard.as_ref().unwrap();
+    let guard = match INDEX.try_lock() {
+        Ok(g) => g,
+        Err(_) => return Ok(()), // Skip if indexing holds the lock
+    };
+    let state = match guard.as_ref() {
+        Some(s) => s,
+        None => return Ok(()),
+    };
     let now = system_time_to_epoch(SystemTime::now());
     state.db.execute(
         "INSERT INTO frecency (path, open_count, last_opened) VALUES (?1, 1, ?2)
@@ -270,6 +283,62 @@ pub fn record_file_open(path: String) -> Result<(), String> {
         params![path, now],
     ).map_err(|e| e.to_string())?;
     Ok(())
+}
+
+#[tauri::command]
+pub fn get_recent_files(limit: Option<u32>) -> Result<Vec<RecentFileEntry>, String> {
+    ensure_state();
+    let guard = match INDEX.try_lock() {
+        Ok(g) => g,
+        Err(_) => return Ok(Vec::new()), // Don't block if indexing holds the lock
+    };
+    let state = match guard.as_ref() {
+        Some(s) => s,
+        None => return Ok(Vec::new()),
+    };
+    let max = limit.unwrap_or(30).min(100) as usize;
+
+    let mut stmt = state.db.prepare(
+        "SELECT path, open_count, last_opened FROM frecency ORDER BY last_opened DESC LIMIT ?1"
+    ).map_err(|e| e.to_string())?;
+
+    let rows: Vec<(String, i32, f64)> = stmt.query_map(params![max as u32], |row| {
+        Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+    })
+    .map_err(|e| e.to_string())?
+    .filter_map(|r| r.ok())
+    .collect();
+
+    let mut entries = Vec::with_capacity(rows.len());
+    for (path, open_count, last_opened) in rows {
+        let p = std::path::Path::new(&path);
+        if !p.exists() { continue; }
+        let meta = match std::fs::metadata(p) {
+            Ok(m) => m,
+            Err(_) => continue,
+        };
+        let name = p.file_name().unwrap_or_default().to_string_lossy().to_string();
+        let extension = p.extension().unwrap_or_default().to_string_lossy().to_string();
+        let parent_name = p.parent()
+            .and_then(|pp| pp.file_name())
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let modified = meta.modified()
+            .map(|t| system_time_to_epoch(t))
+            .unwrap_or(0.0);
+        entries.push(RecentFileEntry {
+            path,
+            name,
+            is_dir: meta.is_dir(),
+            size: meta.len(),
+            modified,
+            extension,
+            last_opened,
+            open_count,
+            parent_name,
+        });
+    }
+    Ok(entries)
 }
 
 #[tauri::command]

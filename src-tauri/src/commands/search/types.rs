@@ -49,6 +49,19 @@ pub struct SearchHistoryEntry {
     pub result_count: u32,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct RecentFileEntry {
+    pub path: String,
+    pub name: String,
+    pub is_dir: bool,
+    pub size: u64,
+    pub modified: f64,
+    pub extension: String,
+    pub last_opened: f64,
+    pub open_count: i32,
+    pub parent_name: String,
+}
+
 // ---------------------------------------------------------------------------
 // Smart query parser (Layer 2)
 // ---------------------------------------------------------------------------

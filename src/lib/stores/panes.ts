@@ -1,5 +1,7 @@
 import { writable, get } from "svelte/store";
 
+export const HOME_PATH = "~home";
+
 export interface FileEntry {
   name: string;
   is_dir: boolean;
@@ -44,7 +46,7 @@ function genId(): string {
   return `id_${++_nextId}_${Date.now()}`;
 }
 
-export function createTab(path: string = "C:\\Users\\gandh"): TabState {
+export function createTab(path: string = HOME_PATH): TabState {
   return {
     id: genId(),
     path,
@@ -77,7 +79,28 @@ function initialLayout(): AppLayout {
   };
 }
 
-export const layout = writable<AppLayout>(initialLayout());
+// The internal writable store. We wrap it below to ensure every update()
+// produces new object references for panes and tabs, so that Svelte 5's
+// $derived (which uses === comparison) correctly detects changes.
+const _layout = writable<AppLayout>(initialLayout());
+
+function deepCloneLayout(l: AppLayout): AppLayout {
+  return {
+    ...l,
+    panes: l.panes.map(p => ({
+      ...p,
+      tabs: p.tabs.map(t => ({ ...t })),
+    })),
+  };
+}
+
+export const layout = {
+  subscribe: _layout.subscribe,
+  set: (value: AppLayout) => _layout.set(deepCloneLayout(value)),
+  update: (fn: (l: AppLayout) => AppLayout) => {
+    _layout.update((l) => deepCloneLayout(fn(l)));
+  },
+};
 
 // ── Helpers to get active pane/tab ──
 export function getActivePane(l: AppLayout): PaneState {
@@ -173,9 +196,13 @@ export function toggleHiddenFiles() {
 
 // ── Tab-level navigation helpers ──
 
+const MAX_HISTORY = 50;
 export function pushTabHistory(tab: TabState, path: string) {
-  const newStack = tab.historyStack.slice(0, tab.historyIndex + 1);
+  let newStack = tab.historyStack.slice(0, tab.historyIndex + 1);
   newStack.push(path);
+  if (newStack.length > MAX_HISTORY) {
+    newStack = newStack.slice(newStack.length - MAX_HISTORY);
+  }
   tab.historyStack = newStack;
   tab.historyIndex = newStack.length - 1;
 }

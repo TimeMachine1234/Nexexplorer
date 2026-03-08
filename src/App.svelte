@@ -16,6 +16,8 @@
     toggleHiddenFiles,
     setActivePane,
   } from "./lib/stores/panes";
+
+  let currentPath = $derived(getActiveTab(getActivePane($layout)).path);
   import { setupTransferListener, transfers } from "./lib/stores/transfers";
   import { selectedFileForPreview, debouncedPreviewPath } from "./lib/stores/preview";
   import { invoke } from "@tauri-apps/api/core";
@@ -30,15 +32,15 @@
   // Setup transfer progress listener
   setupTransferListener();
 
-  // Auto-start indexing + file watcher on launch
+  // Auto-start indexing + pane watcher on launch
   (async () => {
     try {
+      // Init the lightweight pane watcher (watches nothing until panes navigate)
+      try { await invoke("init_pane_watcher"); } catch (_) {}
+      // Start indexing in the background — index watcher starts automatically when done
       const paths: string[] = await invoke("get_default_index_paths");
       if (paths.length > 0) {
-        // Start indexing (may fail if already running — that's fine)
         try { await invoke("start_indexing", { paths }); } catch (_) {}
-        // Always start the file watcher for live fs-change events
-        try { await invoke("start_file_watcher", { paths }); } catch (_) {}
       }
     } catch (e) {
       console.warn("[indexer] Auto-start failed:", e);
@@ -75,7 +77,6 @@
     const ref = paneManager?.getActivePaneRef();
     const l = $layout;
     const activePane = getActivePane(l);
-
     // Ctrl+\ = Toggle split pane (also match Ctrl+| for shifted backslash)
     if (e.ctrlKey && (e.key === "\\" || e.key === "|" || e.code === "Backslash")) {
       e.preventDefault();
@@ -185,7 +186,11 @@
       e.preventDefault();
       showPreviewPanel = !showPreviewPanel;
       if (showPreviewPanel) {
-        previewFilePath = ref?.getSelectedFilePath() ?? null;
+        const sel = ref?.getSelectedFilePath();
+        if (sel) {
+          selectedFileForPreview.set(sel);
+          previewFilePath = sel;
+        }
       }
       return;
     }
@@ -206,6 +211,9 @@
       e.preventDefault();
       const sel = ref?.getSelectedFilePath();
       if (sel) {
+        if (!quickPreviewPath) {
+          selectedFileForPreview.set(sel);
+        }
         quickPreviewPath = quickPreviewPath ? null : sel;
       }
       return;
@@ -228,12 +236,16 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <div class="app-layout">
-  <Sidebar onNavigate={handleSidebarNavigate} />
+  <Sidebar onNavigate={handleSidebarNavigate} {currentPath} />
   <div class="main-area">
     <div class="pane-row">
       <PaneManager bind:this={paneManager} />
       {#if showPreviewPanel}
-        <PreviewPanel filePath={previewFilePath} onClose={() => showPreviewPanel = false} />
+        <PreviewPanel
+          filePath={previewFilePath}
+          onClose={() => showPreviewPanel = false}
+          onNavigate={(path) => previewFilePath = path}
+        />
       {/if}
     </div>
     {#if showTransferPanel}
@@ -243,7 +255,11 @@
 </div>
 
 {#if quickPreviewPath}
-  <QuickPreview filePath={quickPreviewPath} onClose={() => quickPreviewPath = null} />
+  <QuickPreview
+    filePath={quickPreviewPath}
+    onClose={() => quickPreviewPath = null}
+    onNavigate={(path) => quickPreviewPath = path}
+  />
 {/if}
 
 {#if showSearch}
