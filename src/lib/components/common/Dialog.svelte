@@ -1,37 +1,50 @@
 <script lang="ts">
+  import type { Snippet } from "svelte";
+
   interface Props {
     title?: string;
     onClose?: () => void;
-    children?: import("svelte").Snippet;
-    actions?: import("svelte").Snippet;
+    width?: "sm" | "md" | "lg";
+    children?: Snippet;
+    actions?: Snippet;
   }
 
-  let { title, onClose, children, actions }: Props = $props();
+  let { title, onClose, width = "md", children, actions }: Props = $props();
 
-  function handleBackdropClick() {
-    onClose?.();
-  }
+  const widthMap = { sm: "400px", md: "480px", lg: "560px" };
 
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === "Escape") onClose?.();
-  }
+  function handleBackdropClick() { onClose?.(); }
+  function handleKeydown(e: KeyboardEvent) { if (e.key === "Escape") onClose?.(); }
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<!-- svelte-ignore a11y_no_static_element_interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
 <div class="dialog-overlay" onclick={handleBackdropClick}>
-  <div class="dialog" onclick={(e) => e.stopPropagation()}>
+  <div
+    class="dialog"
+    style="--dialog-width: {widthMap[width]}"
+    onclick={(e) => e.stopPropagation()}
+    role="dialog"
+    aria-modal="true"
+  >
     {#if title}
-      <div class="dialog-title">{title}</div>
+      <div class="dialog-header">
+        <span class="dialog-title">{title}</span>
+        <button class="dialog-close" onclick={onClose} aria-label="Close">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
     {/if}
     <div class="dialog-body">
       {@render children?.()}
     </div>
     {#if actions}
       <div class="dialog-actions">
-        {@render actions?.()}
+        {@render actions()}
       </div>
     {/if}
   </div>
@@ -39,31 +52,82 @@
 
 <style>
   .dialog-overlay {
-    position: absolute;
+    position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 100;
+    z-index: var(--z-modal);
+    animation: overlay-in 0.15s ease;
+  }
+
+  @keyframes overlay-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
   }
 
   .dialog {
     background: var(--surface-high);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 12px 16px;
-    min-width: 280px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border-active);
+    border-radius: var(--radius-lg);
+    width: var(--dialog-width, 480px);
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 64px);
+    overflow: hidden;
+    box-shadow: var(--shadow-float);
+    display: flex;
+    flex-direction: column;
+    animation: dialog-in 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes dialog-in {
+    from { opacity: 0; transform: scale(0.96) translateY(4px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
   }
 
   .dialog-title {
-    font-size: 12px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: 0.01em;
+  }
+
+  .dialog-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: transparent;
     color: var(--text-muted);
-    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+    flex-shrink: 0;
+  }
+
+  .dialog-close:hover {
+    background: var(--surface-raised);
+    color: var(--text);
   }
 
   .dialog-body {
+    padding: 16px;
+    overflow-y: auto;
+    flex: 1;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -72,7 +136,9 @@
   .dialog-actions {
     display: flex;
     gap: 6px;
-    margin-top: 10px;
     justify-content: flex-end;
+    padding: 12px 16px 14px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
   }
 </style>

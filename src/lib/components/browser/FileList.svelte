@@ -30,7 +30,7 @@
 
   let { entries, currentPath, sortByField, sortAscending, showHidden, filterText, selectedPaths, onNavigate, onOpenFile, onSortChange, onContextMenu, onSelect }: Props = $props();
 
-  const ROW_HEIGHT = 28;
+  const ROW_HEIGHT = 26;
   const OVERSCAN = 10;
 
   let containerEl: HTMLDivElement | undefined = $state();
@@ -130,8 +130,8 @@
   .file-list-header {
     display: flex;
     align-items: center;
-    height: 28px;
-    padding: 0 12px;
+    height: 24px;
+    padding: 0 10px 0 30px;
     background-color: var(--surface);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
@@ -141,7 +141,7 @@
   }
 
   .col-icon-h {
-    width: 24px;
+    width: 22px;
     flex-shrink: 0;
   }
 
@@ -149,40 +149,45 @@
     border: none;
     background: none;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.05em;
     cursor: pointer;
     font-family: inherit;
-    padding: 0;
+    padding: 0 0 0 5px;
     transition: color 0.1s;
     text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    height: 100%;
+    border-right: 1px solid var(--border-subtle);
   }
 
-  .sortable:hover {
-    color: var(--text);
-  }
+  .sortable:last-child { border-right: none; }
 
-  .col-name-h {
-    flex: 1;
-    padding-left: 4px;
-  }
+  .sortable:hover { color: var(--text-secondary); }
+
+  .sortable.active-sort { color: var(--text-secondary); }
+
+  .col-name-h { flex: 1; }
 
   .col-size-h {
-    width: 80px;
+    width: 70px;
     flex-shrink: 0;
-    text-align: right;
-    padding-right: 16px;
+    justify-content: flex-end;
+    padding-right: 14px;
+    padding-left: 0;
   }
 
   .col-modified-h {
-    width: 160px;
+    width: 120px;
     flex-shrink: 0;
   }
 
   .col-type-h {
-    width: 70px;
+    width: 80px;
     flex-shrink: 0;
   }
 
@@ -191,6 +196,7 @@
     overflow-y: auto;
     overflow-x: hidden;
     height: 100%;
+    background-color: var(--bg);
   }
 
   .virtual-spacer {

@@ -105,9 +105,9 @@
   .breadcrumb-bar {
     display: flex;
     align-items: center;
-    height: 32px;
-    padding: 0 6px;
-    background-color: var(--bg);
+    height: 36px;
+    padding: 0 8px;
+    background-color: var(--surface);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
     gap: 4px;
@@ -116,24 +116,25 @@
   .path-area {
     flex: 1;
     min-width: 0;
-    height: 24px;
+    height: 26px;
     display: flex;
     align-items: center;
     background-color: transparent;
     border: 1px solid transparent;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     padding: 0 6px;
     cursor: text;
-    transition: background-color 0.1s, border-color 0.1s;
+    transition: background-color var(--transition-fast), border-color var(--transition-fast);
   }
 
   .path-area:hover {
-    background-color: var(--surface);
+    background-color: var(--surface-high);
   }
 
   .path-area.editing {
-    background-color: var(--surface);
-    border-color: var(--accent);
+    background-color: var(--surface-high);
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 2px var(--accent-glow);
   }
 
   .path-input {
@@ -150,7 +151,7 @@
   .segments {
     display: flex;
     align-items: center;
-    gap: 1px;
+    gap: 0;
     overflow: hidden;
     white-space: nowrap;
   }
@@ -159,6 +160,7 @@
     color: var(--text-dim);
     flex-shrink: 0;
     margin: 0 1px;
+    opacity: 0.6;
   }
 
   .segment {
@@ -166,12 +168,12 @@
     background: none;
     color: var(--text-muted);
     font-size: 12px;
-    padding: 2px 4px;
-    border-radius: 3px;
+    padding: 2px 5px;
+    border-radius: var(--radius-xs);
     cursor: pointer;
     font-family: inherit;
     white-space: nowrap;
-    transition: background-color 0.1s, color 0.1s;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
   }
 
   .segment:hover {
@@ -180,6 +182,8 @@
   }
 
   .segment:last-child {
-    color: var(--text);
+    color: var(--text-secondary);
+    cursor: default;
+    pointer-events: none;
   }
 </style>

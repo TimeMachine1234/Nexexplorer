@@ -137,29 +137,31 @@
     background: none;
     color: var(--text-muted);
     cursor: pointer;
-    transition: background-color 0.1s, color 0.1s;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
   }
 
   .win-btn:hover {
-    background-color: var(--surface-high);
+    background-color: var(--surface-raised);
     color: var(--text);
   }
 
   .win-btn.close:hover {
-    background-color: #e81123;
-    color: white;
+    background-color: #c42b1c;
+    color: #ffffff;
   }
 
   .snap-menu {
     position: fixed;
-    background-color: var(--surface-high);
-    border: 1px solid var(--border);
-    border-radius: 6px;
+    background: var(--surface-float);
+    backdrop-filter: blur(12px) saturate(1.5);
+    -webkit-backdrop-filter: blur(12px) saturate(1.5);
+    border: 1px solid var(--border-active);
+    border-radius: var(--radius-md);
     padding: 6px;
     display: flex;
-    gap: 6px;
-    z-index: 9999;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    gap: 5px;
+    z-index: var(--z-dropdown);
+    box-shadow: var(--shadow-lg);
   }
 
   .snap-option {
@@ -168,17 +170,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-subtle);
     background: var(--surface);
-    color: var(--text-muted);
+    color: var(--text-secondary);
     cursor: pointer;
-    border-radius: 4px;
-    transition: all 0.1s;
+    border-radius: var(--radius-sm);
+    transition: background-color var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
   }
 
   .snap-option:hover {
-    background-color: var(--accent);
-    border-color: var(--accent);
-    color: white;
+    background-color: var(--accent-dim);
+    border-color: var(--accent-border);
+    color: var(--accent);
   }
 </style>

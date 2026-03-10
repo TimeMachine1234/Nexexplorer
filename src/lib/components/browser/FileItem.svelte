@@ -124,11 +124,13 @@
   .file-item {
     display: flex;
     align-items: center;
-    height: 28px;
-    padding: 0 12px;
+    height: 26px;
+    padding: 0 10px 0 0;
     cursor: default;
-    transition: background-color 0.05s;
-    border-bottom: 1px solid transparent;
+    transition: background-color 90ms ease, border-color 90ms ease;
+    border-left: 2px solid transparent;
+    position: relative;
+    user-select: none;
   }
 
   .file-item:hover {
@@ -136,19 +138,36 @@
   }
 
   .file-item:focus {
-    outline: 1px solid var(--accent);
-    outline-offset: -1px;
+    outline: none;
+    background-color: var(--surface-high);
   }
 
   .file-item.selected {
     background-color: var(--selected-bg);
+    border-left-color: var(--selected-border);
+  }
+
+  .file-item.selected:focus {
+    background-color: var(--accent-dim);
+    border-left-color: var(--accent);
+  }
+
+  .file-item.is-hidden {
+    opacity: var(--cut-opacity, 0.45);
+    font-style: italic;
+  }
+
+  .file-item.is-hidden .col-name {
+    color: var(--text-muted);
   }
 
   .col-icon {
-    width: 24px;
+    width: 22px;
     flex-shrink: 0;
     font-size: 14px;
     text-align: center;
+    font-family: monospace;
+    margin-left: 8px;
   }
 
   .col-name {
@@ -157,9 +176,10 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding-left: 4px;
+    padding-left: 5px;
     color: var(--text);
     font-size: 13px;
+    line-height: 26px;
   }
 
   .col-name.is-dir {
@@ -167,36 +187,44 @@
   }
 
   .col-size {
-    width: 80px;
+    width: 70px;
     flex-shrink: 0;
     text-align: right;
     color: var(--text-muted);
-    font-size: 12px;
-    padding-right: 16px;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    font-family: ui-monospace, monospace;
+    padding-right: 14px;
   }
 
   .col-modified {
-    width: 160px;
+    width: 120px;
     flex-shrink: 0;
     color: var(--text-muted);
-    font-size: 12px;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .col-type {
-    width: 70px;
+    width: 80px;
     flex-shrink: 0;
-    color: var(--text-dim);
+    color: var(--text-muted);
     font-size: 11px;
-  }
-
-  .file-item.is-hidden {
-    opacity: 0.5;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   :global(.ff-highlight) {
-    background-color: rgba(0, 180, 216, 0.25);
+    background: transparent;
     color: var(--accent);
+    text-decoration: underline;
+    text-decoration-color: var(--accent);
+    text-underline-offset: 2px;
     border-radius: 2px;
-    padding: 0 1px;
+    font-weight: 500;
   }
 </style>

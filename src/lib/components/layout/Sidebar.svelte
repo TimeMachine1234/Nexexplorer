@@ -162,7 +162,7 @@
 <style>
   .sidebar {
     height: 100%;
-    background-color: var(--surface);
+    background-color: color-mix(in srgb, var(--surface) 80%, var(--bg) 20%);
     border-right: 1px solid var(--border);
     display: flex;
     flex-direction: column;
@@ -173,6 +173,8 @@
     position: relative;
     min-width: 140px;
     max-width: 400px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
   }
 
   .sidebar.resizing { user-select: none; }
@@ -190,31 +192,49 @@
 
   .resize-handle:hover,
   .sidebar.resizing .resize-handle {
-    background: var(--accent);
+    background: var(--accent-dim);
   }
 
   .nav-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 5px 10px 5px 18px;
+    gap: 7px;
+    padding: 0 10px 0 12px;
+    height: 28px;
     border: none;
     background: none;
-    color: var(--text);
+    color: var(--text-secondary);
     font-size: 13px;
     cursor: pointer;
     text-align: left;
     font-family: inherit;
-    transition: background-color 0.08s;
-    border-radius: 0;
+    transition: background-color 120ms ease, color 120ms ease;
+    border-radius: var(--radius-sm);
+    margin: 0 6px;
+    width: calc(100% - 12px);
+    box-sizing: border-box;
+    position: relative;
   }
 
-  .nav-item:hover { background-color: var(--surface-high); }
+  .nav-item:hover {
+    background-color: var(--surface-high);
+    color: var(--text);
+  }
 
   .nav-item.active {
-    background-color: var(--selected-bg);
+    background-color: var(--accent-dim);
     color: var(--accent);
+  }
+
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 20%;
+    bottom: 20%;
+    width: 2px;
+    background: var(--accent-border);
+    border-radius: 2px;
   }
 
   .icon {
@@ -237,16 +257,31 @@
     display: flex;
     align-items: center;
     position: relative;
+    margin: 0 6px;
+    border-radius: var(--radius-sm);
   }
 
   .pin-row.active .pin-nav {
-    background-color: var(--selected-bg);
+    background-color: var(--accent-dim);
     color: var(--accent);
+  }
+
+  .pin-row.active .pin-nav::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 20%;
+    bottom: 20%;
+    width: 2px;
+    background: var(--accent-border);
+    border-radius: 2px;
   }
 
   .pin-nav {
     flex: 1;
     padding-right: 24px;
+    margin: 0;
+    width: 100%;
   }
 
   .unpin-btn {
@@ -262,7 +297,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     opacity: 0;
     transition: opacity 0.1s, color 0.1s;
     padding: 0;
@@ -271,12 +306,12 @@
   }
 
   .pin-row:hover .unpin-btn { opacity: 1; }
-  .unpin-btn:hover { color: var(--danger, #ef4444); }
+  .unpin-btn:hover { color: var(--danger); }
 
   .empty-hint {
     padding: 6px 18px 8px;
     font-size: 11px;
-    color: var(--text-dim, var(--text-muted));
+    color: var(--text-dim);
     line-height: 1.4;
   }
 
@@ -284,14 +319,14 @@
     background: none;
     border: none;
     color: var(--text-muted);
-    font-size: 14px;
+    font-size: 13px;
     cursor: pointer;
     width: 20px;
     height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 3px;
+    border-radius: var(--radius-xs);
     padding: 0;
     transition: color 0.1s, background-color 0.1s;
     line-height: 1;
@@ -304,7 +339,7 @@
   }
 
   /* Drives */
-  .drive-item { align-items: flex-start; padding-top: 6px; padding-bottom: 6px; }
+  .drive-item { align-items: flex-start; height: auto; padding-top: 5px; padding-bottom: 5px; }
 
   .drive-info {
     flex: 1;
@@ -322,17 +357,17 @@
 
   .drive-bar {
     flex: 1;
-    height: 3px;
-    background-color: var(--border);
+    height: 2px;
+    background-color: var(--border-subtle);
     border-radius: 2px;
     overflow: hidden;
   }
 
   .drive-bar-fill {
     height: 100%;
-    background-color: var(--accent);
+    background: linear-gradient(90deg, var(--accent), var(--accent-hover));
     border-radius: 2px;
-    transition: width 0.3s;
+    transition: width 0.4s ease;
   }
 
   .drive-meta {

@@ -50,17 +50,17 @@
   }
 
   .nav-btn {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
     border: none;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     background: none;
     color: var(--text-muted);
     cursor: pointer;
-    transition: background-color 0.1s, color 0.1s;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
     padding: 0;
   }
 
@@ -70,7 +70,8 @@
   }
 
   .nav-btn:disabled {
-    opacity: 0.25;
+    opacity: 0.3;
     cursor: default;
+    pointer-events: none;
   }
 </style>

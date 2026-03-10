@@ -1,10 +1,16 @@
 <script lang="ts">
+  import { tick } from "svelte";
+
   interface MenuItem {
-    label: string;
+    label?: string;
     shortcut?: string;
-    action: () => void;
+    icon?: string;
     danger?: boolean;
     divider?: boolean;
+    disabled?: boolean;
+    action?: () => void;
+    // legacy compat
+    action_fn?: () => void;
   }
 
   interface Props {
@@ -16,49 +22,55 @@
 
   let { items, x, y, onClose }: Props = $props();
 
-  // Adjust position to keep menu on screen
-  let menuEl: HTMLDivElement | undefined = $state();
+  let menuEl = $state<HTMLDivElement | undefined>();
 
   $effect(() => {
-    if (menuEl) {
+    tick().then(() => {
+      if (!menuEl) return;
       const rect = menuEl.getBoundingClientRect();
-      if (rect.right > window.innerWidth) {
-        menuEl.style.left = `${window.innerWidth - rect.width - 4}px`;
-      }
-      if (rect.bottom > window.innerHeight) {
-        menuEl.style.top = `${window.innerHeight - rect.height - 4}px`;
-      }
-    }
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      if (rect.right > vw - 8) menuEl.style.left = `${x - rect.width}px`;
+      if (rect.bottom > vh - 8) menuEl.style.top = `${y - rect.height}px`;
+    });
   });
 
-  function handleBackdropClick() {
+  function invoke(item: MenuItem) {
+    if (item.disabled || item.divider) return;
+    (item.action ?? item.action_fn)?.();
     onClose();
   }
 </script>
 
-<svelte:window on:keydown={(e) => { if (e.key === "Escape") onClose(); }} />
+<svelte:window onkeydown={(e) => { if (e.key === "Escape") onClose(); }} />
 
-<!-- svelte-ignore a11y_click_events_have_key_events -->
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="context-backdrop" onclick={handleBackdropClick}>
+<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+<div class="ctx-backdrop" onclick={onClose}>
   <div
     bind:this={menuEl}
-    class="context-menu"
-    style="left: {x}px; top: {y}px;"
+    class="ctx-menu"
+    style="left:{x}px; top:{y}px"
     onclick={(e) => e.stopPropagation()}
+    role="menu"
   >
     {#each items as item}
       {#if item.divider}
-        <div class="divider"></div>
+        <div class="ctx-divider" role="separator"></div>
       {:else}
         <button
-          class="menu-item"
-          class:danger={item.danger}
-          onclick={() => { item.action(); onClose(); }}
+          class="ctx-item"
+          class:ctx-item--danger={item.danger}
+          class:ctx-item--disabled={item.disabled}
+          disabled={item.disabled}
+          role="menuitem"
+          onclick={() => invoke(item)}
         >
-          <span class="menu-label">{item.label}</span>
+          {#if item.icon}
+            <span class="ctx-item-icon">{item.icon}</span>
+          {/if}
+          <span class="ctx-item-label">{item.label ?? ""}</span>
           {#if item.shortcut}
-            <span class="menu-shortcut">{item.shortcut}</span>
+            <span class="ctx-item-shortcut">{item.shortcut}</span>
           {/if}
         </button>
       {/if}
@@ -67,27 +79,35 @@
 </div>
 
 <style>
-  .context-backdrop {
+  .ctx-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 1000;
+    z-index: var(--z-dropdown);
   }
 
-  .context-menu {
+  .ctx-menu {
     position: fixed;
     min-width: 180px;
-    background: var(--surface-high);
-    border: 1px solid var(--border);
-    border-radius: 6px;
+    background: var(--surface-float);
+    backdrop-filter: blur(16px) saturate(1.5);
+    -webkit-backdrop-filter: blur(16px) saturate(1.5);
+    border: 1px solid var(--border-active);
+    border-radius: var(--radius-md);
     padding: 4px 0;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    z-index: 1001;
+    box-shadow: var(--shadow-float);
+    z-index: calc(var(--z-dropdown) + 1);
+    animation: ctx-in 0.1s cubic-bezier(0.2, 0, 0, 1);
   }
 
-  .menu-item {
+  @keyframes ctx-in {
+    from { opacity: 0; transform: scale(0.97); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
+  .ctx-item {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 8px;
     width: 100%;
     height: 28px;
     padding: 0 12px;
@@ -98,34 +118,52 @@
     font-family: inherit;
     cursor: pointer;
     text-align: left;
+    transition: background var(--transition-fast);
   }
 
-  .menu-item:hover {
-    background: var(--accent);
-    color: white;
+  .ctx-item:hover:not(.ctx-item--disabled) {
+    background: var(--surface-raised);
   }
 
-  .menu-item.danger:hover {
-    background: var(--danger);
+  .ctx-item--danger { color: var(--danger); }
+  .ctx-item--danger:hover:not(.ctx-item--disabled) {
+    background: var(--danger-dim);
   }
 
-  .menu-label {
+  .ctx-item--disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .ctx-item-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    color: var(--text-muted);
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+
+  .ctx-item-label {
     flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .menu-shortcut {
-    color: var(--text-dim);
+  .ctx-item-shortcut {
+    color: var(--text-muted);
     font-size: 11px;
-    margin-left: 16px;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
   }
 
-  .menu-item:hover .menu-shortcut {
-    color: rgba(255, 255, 255, 0.7);
-  }
-
-  .divider {
+  .ctx-divider {
     height: 1px;
     background: var(--border);
-    margin: 4px 0;
+    margin: 3px 0;
   }
 </style>
