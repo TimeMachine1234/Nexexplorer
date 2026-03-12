@@ -14,16 +14,16 @@
   const usedBytes = $derived(totalBytes - freeBytes);
   const usedPercent = $derived(totalBytes > 0 ? (usedBytes / totalBytes) * 100 : 0);
 
-  const barColor = $derived(() => {
-    if (usedPercent >= 90) return "var(--danger)";
-    if (usedPercent >= 75) return "var(--warning)";
-    return "var(--success)";
-  });
+  const barColor = $derived(
+    usedPercent >= 90 ? "var(--danger)" :
+    usedPercent >= 75 ? "var(--warning)" :
+    "var(--success)"
+  );
 
   function formatBytes(bytes: number): string {
-    if (bytes <= 0) return "0 B";
+    if (bytes < 1) return "0 B";
     const units = ["B", "KB", "MB", "GB", "TB"];
-    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), 4);
+    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
     return `${(bytes / Math.pow(1024, i)).toFixed(i <= 1 ? 0 : 1)} ${units[i]}`;
   }
 </script>
@@ -39,7 +39,7 @@
   <div class="storage-bar-track">
     <div
       class="storage-bar-fill"
-      style="width: {usedPercent}%; background: {barColor()};"
+      style="width: {usedPercent}%; background: {barColor};"
     ></div>
   </div>
   <div class="storage-text">

@@ -38,11 +38,11 @@
     }
   }
 
-  const dirPath = $derived(() => {
+  const dirPath = $derived((() => {
     const parts = path.replace(/\\/g, "/").split("/");
     parts.pop();
     return parts.join("/") || "/";
-  });
+  })());
 </script>
 
 <button
@@ -64,7 +64,7 @@
   </span>
   <span class="rf-info">
     <span class="rf-name">{name}</span>
-    <span class="rf-path">{dirPath()}</span>
+    <span class="rf-path">{dirPath}</span>
   </span>
   {#if modifiedAt}
     <span class="rf-date">{formatDate(modifiedAt)}</span>

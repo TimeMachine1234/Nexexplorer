@@ -19,14 +19,14 @@
   let editValue = $state(path);
   let inputEl = $state<HTMLInputElement | undefined>();
 
-  const segments = $derived(() => {
+  const segments = $derived((() => {
     if (!path) return [];
     const parts = path.replace(/\\/g, "/").split("/").filter(Boolean);
     return parts.map((part, i) => ({
       label: part,
       path: parts.slice(0, i + 1).join("/"),
     }));
-  });
+  })());
 
   function startEdit() {
     editValue = path;
@@ -78,7 +78,7 @@
     />
   {:else}
     <div class="address-breadcrumbs" onclick={startEdit} role="button" tabindex="0" onkeydown={(e) => e.key === "Enter" && startEdit()}>
-      {#each segments() as seg, i}
+      {#each segments as seg, i}
         {#if i > 0}
           <span class="address-sep">
             <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
@@ -88,11 +88,11 @@
         {/if}
         <button
           class="address-crumb"
-          class:address-crumb--last={i === segments().length - 1}
+          class:address-crumb--last={i === segments.length - 1}
           onclick={(e) => { e.stopPropagation(); navigateTo(seg.path); }}
         >{seg.label}</button>
       {/each}
-      {#if segments().length === 0}
+      {#if segments.length === 0}
         <span class="address-placeholder">Enter path…</span>
       {/if}
     </div>
