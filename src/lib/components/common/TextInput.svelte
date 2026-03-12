@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
 
+  type Theme = "dark" | "light" | "glass" | "custom";
+
   interface Props {
     value?: string;
     placeholder?: string;
@@ -8,6 +10,8 @@
     autofocus?: boolean;
     type?: "text" | "search" | "password";
     class?: string;
+    theme?: Theme;
+    customColor?: string;
     onvalue?: (val: string) => void;
     onchange?: (e: Event) => void;
     oninput?: (e: Event) => void;
@@ -25,6 +29,8 @@
     autofocus = false,
     type = "text",
     class: className = "",
+    theme,
+    customColor,
     onvalue,
     onchange,
     oninput,
@@ -36,7 +42,12 @@
   }: Props = $props();
 </script>
 
-<div class="input-wrapper {className}" class:has-icon={type === 'search' || leadingIcon}>
+<div
+  class="input-wrapper {className}"
+  class:has-icon={type === 'search' || leadingIcon}
+  data-theme={theme}
+  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+>
   {#if type === "search"}
     <span class="input-icon">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -88,7 +99,7 @@
     height: 30px;
     padding: 0 10px;
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--sq-md);
     background: var(--surface);
     color: var(--text);
     font-size: 12.5px;

@@ -1,5 +1,34 @@
 @import "tailwindcss";
 
+/* =========================================================
+   SQUIRCLE — CSS utilities for squircle-shaped corners
+   A squircle (superellipse n=4) has continuous curvature —
+   no sudden jump from straight line to arc.
+   For square elements: border-radius: 28% ≈ true squircle.
+   For rectangular elements: use --sq-* token variables below.
+   ========================================================= */
+:root {
+  /* Squircle border-radius tokens */
+  --sq-xs:   4px;   /* tiny tags, dots */
+  --sq-sm:   6px;   /* small badges, chips */
+  --sq-md:   10px;  /* buttons, inputs, dropdowns */
+  --sq-lg:   14px;  /* cards, panels, dialogs */
+  --sq-xl:   18px;  /* large panels */
+  --sq-2xl:  22px;  /* modals, overlays */
+  --sq-icon: 28%;   /* square icons/avatars — true squircle approximation */
+  --sq-full: 9999px;/* fully rounded (pills) */
+}
+
+/* Utility classes */
+.sq-xs   { border-radius: var(--sq-xs); }
+.sq-sm   { border-radius: var(--sq-sm); }
+.sq-md   { border-radius: var(--sq-md); }
+.sq-lg   { border-radius: var(--sq-lg); }
+.sq-xl   { border-radius: var(--sq-xl); }
+.sq-2xl  { border-radius: var(--sq-2xl); }
+.sq-icon { border-radius: var(--sq-icon); }
+.sq-full { border-radius: var(--sq-full); }
+
 :root {
   /* === Backgrounds === */
   --bg: #0d0d10;
@@ -95,6 +124,94 @@
 
   /* === Focus ring === */
   --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+}
+
+/* =========================================================
+   LIGHT THEME — overrides for [data-theme="light"]
+   ========================================================= */
+[data-theme="light"] {
+  --bg: #f2f2f7;
+  --surface: #ffffff;
+  --surface-high: #f8f8fc;
+  --surface-raised: #efeff4;
+  --surface-float: rgba(255, 255, 255, 0.92);
+  --surface-overlay: rgba(240, 240, 248, 0.88);
+
+  --border: rgba(0, 0, 0, 0.08);
+  --border-subtle: rgba(0, 0, 0, 0.04);
+  --border-active: rgba(0, 0, 0, 0.14);
+  --border-strong: rgba(0, 0, 0, 0.20);
+  --border-focus: rgba(14, 165, 233, 0.55);
+
+  --text: #1a1a2e;
+  --text-secondary: #44445a;
+  --text-muted: #8888a0;
+  --text-dim: #c4c4d0;
+  --text-placeholder: #aaaabc;
+
+  --accent: #0ea5e9;
+  --accent-hover: #0284c7;
+  --accent-active: #0369a1;
+  --accent-dim: rgba(14, 165, 233, 0.10);
+  --accent-glow: rgba(14, 165, 233, 0.18);
+  --accent-border: rgba(14, 165, 233, 0.30);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12), 0 1px 4px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.14), 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-float: 0 16px 56px rgba(0, 0, 0, 0.16), 0 4px 16px rgba(0, 0, 0, 0.10), 0 1px 4px rgba(0, 0, 0, 0.06);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.90);
+
+  --selected-bg: rgba(14, 165, 233, 0.10);
+  --selected-border: rgba(14, 165, 233, 0.25);
+
+  --ring: 0 0 0 2px var(--bg), 0 0 0 4px var(--accent);
+}
+
+/* =========================================================
+   GLASS / TRANSLUCENT THEME — [data-theme="glass"]
+   Surfaces become frosted-glass; works best over imagery.
+   ========================================================= */
+[data-theme="glass"] {
+  --bg: rgba(10, 10, 18, 0.55);
+  --surface: rgba(255, 255, 255, 0.06);
+  --surface-high: rgba(255, 255, 255, 0.09);
+  --surface-raised: rgba(255, 255, 255, 0.12);
+  --surface-float: rgba(20, 20, 30, 0.55);
+  --surface-overlay: rgba(10, 10, 20, 0.70);
+
+  --border: rgba(255, 255, 255, 0.10);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-active: rgba(255, 255, 255, 0.18);
+  --border-strong: rgba(255, 255, 255, 0.25);
+
+  --text: #e8e8f2;
+  --text-secondary: #aaaac0;
+  --text-muted: #686880;
+  --shadow-float: 0 16px 56px rgba(0, 0, 0, 0.60), 0 4px 16px rgba(0, 0, 0, 0.40), 0 1px 4px rgba(0, 0, 0, 0.30);
+}
+
+[data-theme="glass"] .glass,
+[data-theme="glass"] .surface {
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+/* =========================================================
+   CUSTOM COLOR THEME — [data-theme="custom"]
+   --custom-color is set programmatically via JS.
+   ========================================================= */
+[data-theme="custom"] {
+  --accent: var(--custom-color, #6366f1);
+  --accent-hover: color-mix(in srgb, var(--custom-color, #6366f1) 80%, white);
+  --accent-active: color-mix(in srgb, var(--custom-color, #6366f1) 70%, black);
+  --accent-dim: color-mix(in srgb, var(--custom-color, #6366f1) 14%, transparent);
+  --accent-glow: color-mix(in srgb, var(--custom-color, #6366f1) 25%, transparent);
+  --accent-border: color-mix(in srgb, var(--custom-color, #6366f1) 35%, transparent);
+  --selected-bg: color-mix(in srgb, var(--custom-color, #6366f1) 12%, transparent);
+  --selected-border: color-mix(in srgb, var(--custom-color, #6366f1) 28%, transparent);
+  --border-focus: color-mix(in srgb, var(--custom-color, #6366f1) 55%, transparent);
 }
 
 /* === Reset === */

@@ -1,17 +1,25 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
 
+  type Theme = "dark" | "light" | "glass" | "custom";
+
   interface Props {
     padding?: "none" | "sm" | "md";
     hoverable?: boolean;
     class?: string;
+    theme?: Theme;
+    customColor?: string;
     children?: Snippet;
   }
 
-  let { padding = "md", hoverable = false, class: className = "", children }: Props = $props();
+  let { padding = "md", hoverable = false, class: className = "", theme, customColor, children }: Props = $props();
 </script>
 
-<div class="card card--pad-{padding} {hoverable ? 'card--hoverable' : ''} {className}">
+<div
+  class="card card--pad-{padding} {hoverable ? 'card--hoverable' : ''} {className}"
+  data-theme={theme}
+  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+>
   {@render children?.()}
 </div>
 
@@ -19,7 +27,7 @@
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius-md);
+    border-radius: var(--sq-lg);
     box-shadow: var(--shadow-sm);
     transition:
       border-color var(--transition-fast),
@@ -40,5 +48,11 @@
   .card--hoverable:active {
     transform: translateY(0);
     box-shadow: var(--shadow-sm);
+  }
+
+  .card[data-theme="glass"],
+  :global([data-theme="glass"]) .card {
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
   }
 </style>

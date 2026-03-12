@@ -2,9 +2,11 @@
   interface Props {
     size?: "xs" | "sm" | "md" | "lg";
     color?: "accent" | "text" | "muted";
+    theme?: "dark" | "light" | "glass" | "custom";
+    customColor?: string;
   }
 
-  let { size = "md", color = "accent" }: Props = $props();
+  let { size = "md", color = "accent", theme, customColor }: Props = $props();
 
   const sizeMap = { xs: 12, sm: 16, md: 20, lg: 28 };
   const px = $derived(sizeMap[size]);
@@ -23,6 +25,8 @@
   fill="none"
   role="status"
   aria-label="Loading"
+  data-theme={theme}
+  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
 >
   <circle
     cx={px / 2}

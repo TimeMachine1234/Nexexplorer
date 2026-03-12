@@ -1,16 +1,24 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
 
+  type Theme = "dark" | "light" | "glass" | "custom";
+
   interface Props {
     variant?: "default" | "accent" | "success" | "danger" | "warning" | "ai";
     size?: "sm" | "md";
+    theme?: Theme;
+    customColor?: string;
     children?: Snippet;
   }
 
-  let { variant = "default", size = "sm", children }: Props = $props();
+  let { variant = "default", size = "sm", theme, customColor, children }: Props = $props();
 </script>
 
-<span class="badge badge--{variant} badge--{size}">
+<span
+  class="badge badge--{variant} badge--{size}"
+  data-theme={theme}
+  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+>
   {@render children?.()}
 </span>
 
@@ -19,7 +27,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    border-radius: 9999px;
+    border-radius: var(--sq-full);
     font-family: inherit;
     font-weight: 500;
     letter-spacing: 0.02em;
