@@ -18,9 +18,11 @@
     x: number;
     y: number;
     onClose: () => void;
+    theme?: "dark" | "light" | "glass" | "custom";
+    customColor?: string;
   }
 
-  let { items, x, y, onClose }: Props = $props();
+  let { items, x, y, onClose, theme, customColor }: Props = $props();
 
   let menuEl = $state<HTMLDivElement | undefined>();
 
@@ -45,11 +47,11 @@
 <svelte:window onkeydown={(e) => { if (e.key === "Escape") onClose(); }} />
 
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-<div class="ctx-backdrop" onclick={onClose}>
+<div class="ctx-backdrop" onclick={onClose} data-theme={theme}>
   <div
     bind:this={menuEl}
     class="ctx-menu"
-    style="left:{x}px; top:{y}px"
+    style="left:{x}px; top:{y}px{theme === 'custom' && customColor ? `; --custom-color: ${customColor}` : ''}"
     onclick={(e) => e.stopPropagation()}
     role="menu"
   >
@@ -92,7 +94,7 @@
     backdrop-filter: blur(16px) saturate(1.5);
     -webkit-backdrop-filter: blur(16px) saturate(1.5);
     border: 1px solid var(--border-active);
-    border-radius: var(--radius-md);
+    border-radius: var(--sq-lg);
     padding: 4px 0;
     box-shadow: var(--shadow-float);
     z-index: calc(var(--z-dropdown) + 1);

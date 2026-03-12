@@ -1,15 +1,19 @@
 <script lang="ts">
   import type { Snippet } from "svelte";
 
+  type Theme = "dark" | "light" | "glass" | "custom";
+
   interface Props {
     title?: string;
     onClose?: () => void;
     width?: "sm" | "md" | "lg";
     children?: Snippet;
     actions?: Snippet;
+    theme?: Theme;
+    customColor?: string;
   }
 
-  let { title, onClose, width = "md", children, actions }: Props = $props();
+  let { title, onClose, width = "md", children, actions, theme, customColor }: Props = $props();
 
   const widthMap = { sm: "400px", md: "480px", lg: "560px" };
 
@@ -20,10 +24,10 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-<div class="dialog-overlay" onclick={handleBackdropClick}>
+<div class="dialog-overlay" onclick={handleBackdropClick} data-theme={theme}>
   <div
     class="dialog"
-    style="--dialog-width: {widthMap[width]}"
+    style="--dialog-width: {widthMap[width]}{theme === 'custom' && customColor ? `; --custom-color: ${customColor}` : ''}"
     onclick={(e) => e.stopPropagation()}
     role="dialog"
     aria-modal="true"
@@ -72,7 +76,7 @@
   .dialog {
     background: var(--surface-high);
     border: 1px solid var(--border-active);
-    border-radius: var(--radius-lg);
+    border-radius: var(--sq-2xl);
     width: var(--dialog-width, 480px);
     max-width: calc(100vw - 32px);
     max-height: calc(100vh - 64px);
@@ -110,7 +114,7 @@
     justify-content: center;
     width: 24px;
     height: 24px;
-    border-radius: var(--radius-sm);
+    border-radius: var(--sq-sm);
     border: none;
     background: transparent;
     color: var(--text-muted);
@@ -140,5 +144,11 @@
     padding: 12px 16px 14px;
     border-top: 1px solid var(--border);
     flex-shrink: 0;
+  }
+
+  .dialog-overlay[data-theme="glass"] .dialog,
+  :global([data-theme="glass"]) .dialog {
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
   }
 </style>
