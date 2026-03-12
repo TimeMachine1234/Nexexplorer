@@ -39,8 +39,15 @@
       }
     }
 
-    document.addEventListener("click", handleClickOutside, true);
-    return () => document.removeEventListener("click", handleClickOutside, true);
+    // Use a timeout to avoid catching the trigger click that opened the popover
+    const t = setTimeout(() => {
+      document.addEventListener("click", handleClickOutside, true);
+    }, 0);
+
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener("click", handleClickOutside, true);
+    };
   });
 
   const offsetStyle = $derived({

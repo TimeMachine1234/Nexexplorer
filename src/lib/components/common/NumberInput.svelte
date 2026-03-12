@@ -48,6 +48,9 @@
     if (!isNaN(raw)) {
       value = clamp(raw);
       onchange?.(value);
+    } else {
+      // Reset input to last valid value
+      (e.target as HTMLInputElement).value = String(value);
     }
   }
 

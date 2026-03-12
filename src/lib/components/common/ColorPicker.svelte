@@ -39,7 +39,8 @@
   function handleHexInput(e: Event) {
     const raw = (e.target as HTMLInputElement).value.trim();
     const hex = raw.startsWith("#") ? raw : `#${raw}`;
-    if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
+    // Accept 6-digit or 3-digit hex shorthand
+    if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(hex)) {
       value = hex;
       hexInput = hex;
       onchange?.(value);
