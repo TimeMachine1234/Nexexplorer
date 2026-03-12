@@ -39,10 +39,15 @@
   function handleHexInput(e: Event) {
     const raw = (e.target as HTMLInputElement).value.trim();
     const hex = raw.startsWith("#") ? raw : `#${raw}`;
-    // Accept 6-digit or 3-digit hex shorthand
-    if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(hex)) {
+    if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
       value = hex;
       hexInput = hex;
+      onchange?.(value);
+    } else if (/^#[0-9a-fA-F]{3}$/.test(hex)) {
+      // Normalize 3-digit to 6-digit
+      const expanded = `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;
+      value = expanded;
+      hexInput = expanded;
       onchange?.(value);
     } else {
       hexInput = raw;

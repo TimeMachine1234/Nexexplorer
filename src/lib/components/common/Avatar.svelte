@@ -24,12 +24,15 @@
   const sizeMap = { xs: 20, sm: 24, md: 32, lg: 40, xl: 48 };
   const px = $derived(sizeMap[size]);
 
-  const initials = $derived(() => {
-    if (!name) return "";
-    const words = name.trim().split(/\s+/);
-    if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
-    return name.slice(0, 2).toUpperCase();
-  });
+  const initials = $derived(
+    name
+      ? (() => {
+          const words = name.trim().split(/\s+/);
+          if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+          return name.slice(0, 2).toUpperCase();
+        })()
+      : ""
+  );
 
   const fontSize = $derived(Math.floor(px * 0.38));
   const bgColor = $derived(color || "var(--surface-raised)");
@@ -44,12 +47,12 @@
     `font-size: ${fontSize}px;`,
     !src ? `background-color: ${bgColor};` : "",
     theme === "custom" && customColor ? `--custom-color: ${customColor};` : "",
-  ].filter(Boolean).join(" ")}
+  ].filter(Boolean).join("")}
 >
   {#if src}
     <img class="avatar-img" src={src} alt={name || "avatar"} />
   {:else}
-    <span class="avatar-initials">{initials()}</span>
+    <span class="avatar-initials">{initials}</span>
   {/if}
 </div>
 

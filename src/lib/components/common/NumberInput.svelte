@@ -44,14 +44,22 @@
   }
 
   function handleInput(e: Event) {
+    // Allow intermediate states (e.g., typing "-" for negative numbers) — validate on blur
     const raw = parseFloat((e.target as HTMLInputElement).value);
     if (!isNaN(raw)) {
-      value = clamp(raw);
-      onchange?.(value);
-    } else {
-      // Reset input to last valid value
-      (e.target as HTMLInputElement).value = String(value);
+      value = raw; // don't clamp yet, wait for blur
     }
+  }
+
+  function handleBlur(e: FocusEvent) {
+    const raw = parseFloat((e.target as HTMLInputElement).value);
+    if (isNaN(raw)) {
+      value = clamp(min !== undefined ? min : 0);
+    } else {
+      value = clamp(raw);
+    }
+    (e.target as HTMLInputElement).value = String(value);
+    onchange?.(value);
   }
 
   function handleKeydown(e: KeyboardEvent) {
@@ -86,6 +94,7 @@
     {step}
     {disabled}
     oninput={handleInput}
+    onblur={handleBlur}
     onkeydown={handleKeydown}
     class="num-field"
     aria-label="Number input"

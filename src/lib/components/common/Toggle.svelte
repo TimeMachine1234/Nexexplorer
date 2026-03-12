@@ -87,9 +87,9 @@
     box-shadow: 0 0 0 2px var(--border-focus);
   }
 
-  .toggle--sm { width: 28px; height: 16px; }
-  .toggle--md { width: 36px; height: 20px; }
-  .toggle--lg { width: 44px; height: 24px; }
+  .toggle--sm { width: 28px; height: 16px; --toggle-translate: 13px; }
+  .toggle--md { width: 36px; height: 20px; --toggle-translate: 17px; }
+  .toggle--lg { width: 44px; height: 24px; --toggle-translate: 21px; }
 
   .toggle--checked {
     background: var(--accent);
@@ -125,9 +125,9 @@
     left: 1px;
   }
 
-  .toggle--sm.toggle--checked .toggle-thumb--sm   { transform: translateX(13px); }
-  .toggle--md.toggle--checked .toggle-thumb--md   { transform: translateX(17px); }
-  .toggle--lg.toggle--checked .toggle-thumb--lg   { transform: translateX(21px); }
+  .toggle--sm.toggle--checked .toggle-thumb--sm,
+  .toggle--md.toggle--checked .toggle-thumb--md,
+  .toggle--lg.toggle--checked .toggle-thumb--lg { transform: translateX(var(--toggle-translate)); }
 
   .toggle-label {
     font-size: 12px;

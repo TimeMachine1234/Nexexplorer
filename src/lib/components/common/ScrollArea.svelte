@@ -33,7 +33,7 @@
     maxWidth ? `max-width: ${maxWidth};` : "",
     `overflow-x: ${overflowX}; overflow-y: ${overflowY};`,
     theme === "custom" && customColor ? `--custom-color: ${customColor};` : "",
-  ].filter(Boolean).join(" ")}
+  ].filter(Boolean).join("")}
 >
   {@render children?.()}
 </div>

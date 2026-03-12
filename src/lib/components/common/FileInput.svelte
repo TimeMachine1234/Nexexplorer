@@ -43,6 +43,10 @@
         ? fileNames[0]
         : `${fileNames.length} files selected`
   );
+
+  const ariaDescription = $derived(
+    fileNames.length > 1 ? fileNames.join(", ") : undefined
+  );
 </script>
 
 <div
@@ -68,6 +72,7 @@
     onclick={openPicker}
     class="file-btn"
     class:file-btn--selected={fileNames.length > 0}
+    aria-label={fileNames.length > 1 ? `${fileNames.length} files selected: ${ariaDescription}` : displayText}
   >
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>

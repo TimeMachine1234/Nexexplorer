@@ -104,8 +104,8 @@
   }
 
   @keyframes popover-in {
-    from { opacity: 0; transform: scale(0.95) translateX(-50%); }
-    to   { opacity: 1; transform: scale(1) translateX(-50%); }
+    from { opacity: 0; transform: translateX(-50%) scale(0.95); }
+    to   { opacity: 1; transform: translateX(-50%) scale(1); }
   }
 
   .popover-content--left,
@@ -114,7 +114,7 @@
   }
 
   @keyframes popover-in-side {
-    from { opacity: 0; transform: scale(0.95) translateY(-50%); }
-    to   { opacity: 1; transform: scale(1) translateY(-50%); }
+    from { opacity: 0; transform: translateY(-50%) scale(0.95); }
+    to   { opacity: 1; transform: translateY(-50%) scale(1); }
   }
 </style>
