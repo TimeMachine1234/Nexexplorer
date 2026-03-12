@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   type Theme = "dark" | "light" | "glass" | "custom";
 
   interface Props {
@@ -6,6 +7,7 @@
     onnavigate?: (path: string) => void;
     theme?: Theme;
     customColor?: string;
+    radius?: RadiusProp;
   }
 
   let {
@@ -13,7 +15,8 @@
     onnavigate,
     theme,
     customColor,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 
   let editing = $state(false);
   let editValue = $state(path);
@@ -63,7 +66,7 @@
 <div
   class="address-bar"
   data-theme={theme}
-  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+  style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
 >
   {#if editing}
     <input

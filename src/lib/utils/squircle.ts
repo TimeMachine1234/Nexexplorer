@@ -143,3 +143,79 @@ export function squircleAction(
     },
   };
 }
+
+// ─── Radius prop system ────────────────────────────────────────────────────────
+
+/**
+ * The `radius` prop accepted by every themed component.
+ *
+ * | Value           | Result                                            |
+ * |-----------------|---------------------------------------------------|
+ * | `"squircle"`    | Default — uses the per-size squircle tokens       |
+ * | `"none"`        | No rounding (sharp square corners)                |
+ * | `"full"`        | Maximum pill rounding (9999 px)                   |
+ * | `"xs"/"sm"/"md"/"lg"/"xl"/"2xl"` | Fixed squircle-token values      |
+ * | `number`        | Custom radius in pixels (e.g. `8` → `"8px"`)      |
+ * | `string`        | Any valid CSS radius (e.g. `"50%"`, `"0.5rem"`)   |
+ */
+export type RadiusProp =
+  | "squircle"
+  | "none"
+  | "full"
+  | "xs"
+  | "sm"
+  | "md"
+  | "lg"
+  | "xl"
+  | "2xl"
+  | number
+  | string;
+
+/** Map semantic name → concrete CSS value */
+const RADIUS_MAP: Partial<Record<string, string>> = {
+  none: "0px",
+  full: "9999px",
+  xs:   "4px",
+  sm:   "6px",
+  md:   "10px",
+  lg:   "14px",
+  xl:   "18px",
+  "2xl":"22px",
+};
+
+/**
+ * Resolve a `RadiusProp` to a concrete CSS length string.
+ * Returns `""` for `"squircle"` (meaning: use the component's default tokens).
+ */
+export function resolveRadius(radius: RadiusProp): string {
+  if (radius === "squircle") return "";
+  if (typeof radius === "number") return `${radius}px`;
+  return RADIUS_MAP[radius] ?? radius;
+}
+
+/**
+ * Returns an inline CSS string that overrides **all** `--sq-*` design tokens
+ * to a single uniform value, effectively changing the rounding of every
+ * element inside the component that uses those tokens.
+ *
+ * When `radius` is `undefined` or `"squircle"` this returns `""` (no override).
+ *
+ * @example
+ * // Inside a component template:
+ * style="{radiusVars(radius)}{customColor ? `--custom-color:${customColor};` : ''}"
+ */
+export function radiusVars(radius?: RadiusProp): string {
+  if (!radius || radius === "squircle") return "";
+  const v = resolveRadius(radius);
+  if (!v) return "";
+  return (
+    `--sq-xs:${v};` +
+    `--sq-sm:${v};` +
+    `--sq-md:${v};` +
+    `--sq-lg:${v};` +
+    `--sq-xl:${v};` +
+    `--sq-2xl:${v};` +
+    `--sq-icon:${v};` +
+    `--sq-full:${v};`
+  );
+}

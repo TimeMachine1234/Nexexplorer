@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   import type { Snippet } from "svelte";
 
   type Theme = "dark" | "light" | "glass" | "custom";
@@ -11,9 +12,11 @@
     actions?: Snippet;
     theme?: Theme;
     customColor?: string;
+    radius?: RadiusProp;
   }
 
-  let { title, onClose, width = "md", children, actions, theme, customColor }: Props = $props();
+  let { title, onClose, width = "md", children, actions, theme, customColor, radius,
+}: Props = $props();
 
   const widthMap = { sm: "400px", md: "480px", lg: "560px" };
 
@@ -27,7 +30,7 @@
 <div class="dialog-overlay" onclick={handleBackdropClick} data-theme={theme}>
   <div
     class="dialog"
-    style="--dialog-width: {widthMap[width]}{theme === 'custom' && customColor ? `; --custom-color: ${customColor}` : ''}"
+    style="--dialog-width: {widthMap[width]}{theme === 'custom' && customColor ? `; --custom-color: ${customColor};` : ''}{radiusVars(radius)}"
     onclick={(e) => e.stopPropagation()}
     role="dialog"
     aria-modal="true"

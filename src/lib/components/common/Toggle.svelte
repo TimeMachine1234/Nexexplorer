@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   type Theme = "dark" | "light" | "glass" | "custom";
 
   interface Props {
@@ -9,6 +10,7 @@
     theme?: Theme;
     customColor?: string;
     onchange?: (checked: boolean) => void;
+    radius?: RadiusProp;
   }
 
   let {
@@ -19,7 +21,8 @@
     theme,
     customColor,
     onchange,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 
   function toggle() {
     if (disabled) return;
@@ -39,7 +42,7 @@
 <div
   class="toggle-wrapper"
   data-theme={theme}
-  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+  style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
 >
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div

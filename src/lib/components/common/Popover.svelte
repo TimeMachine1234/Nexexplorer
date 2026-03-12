@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   import type { Snippet } from "svelte";
 
   type Theme = "dark" | "light" | "glass" | "custom";
@@ -12,6 +13,7 @@
     customColor?: string;
     trigger?: Snippet;
     children?: Snippet;
+    radius?: RadiusProp;
   }
 
   let {
@@ -22,7 +24,8 @@
     customColor,
     trigger,
     children,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 
   let wrapperEl = $state<HTMLDivElement | null>(null);
 
@@ -63,7 +66,7 @@
   class="popover-wrapper"
   bind:this={wrapperEl}
   data-theme={theme}
-  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+  style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
 >
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <div class="popover-trigger" onclick={toggle}>

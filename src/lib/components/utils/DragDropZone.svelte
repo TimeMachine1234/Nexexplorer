@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   import type { Snippet } from "svelte";
 
   type Theme = "dark" | "light" | "glass" | "custom";
@@ -13,6 +14,7 @@
     ondrop?: (files: File[]) => void;
     ondragover?: () => void;
     ondragleave?: () => void;
+    radius?: RadiusProp;
   }
 
   let {
@@ -25,7 +27,8 @@
     ondrop,
     ondragover,
     ondragleave,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 
   let dragging = $state(false);
 

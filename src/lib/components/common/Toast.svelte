@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   type Theme = "dark" | "light" | "glass" | "custom";
   type ToastType = "default" | "success" | "warning" | "danger" | "info";
 
@@ -15,6 +16,7 @@
     onclose?: () => void;
     theme?: Theme;
     customColor?: string;
+    radius?: RadiusProp;
   }
 
   let {
@@ -25,7 +27,8 @@
     onclose,
     theme,
     customColor,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 
   let visible = $state(true);
 
@@ -54,7 +57,7 @@
   <div
     class="toast toast--{type}"
     data-theme={theme}
-    style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+    style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
     role="alert"
     aria-live="polite"
   >

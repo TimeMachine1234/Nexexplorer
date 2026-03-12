@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   import Dialog from "../common/Dialog.svelte";
   import Button from "../common/Button.svelte";
 
@@ -19,6 +20,7 @@
     onclose?: () => void;
     theme?: Theme;
     customColor?: string;
+    radius?: RadiusProp;
   }
 
   let {
@@ -26,7 +28,8 @@
     onclose,
     theme,
     customColor,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 
   const groups: ShortcutGroup[] = [
     {

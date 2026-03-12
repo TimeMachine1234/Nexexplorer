@@ -1,9 +1,10 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   type Theme = "dark" | "light" | "glass" | "custom";
-  let { label, description, shortcut, icon, active = false, theme, customColor, onclick }: { label: string; description?: string; shortcut?: string; icon?: string; active?: boolean; theme?: Theme; customColor?: string; onclick?: () => void } = $props();
+  let { label, description, shortcut, icon, active = false, theme, customColor, onclick, radius }: { label: string; description?: string; shortcut?: string; icon?: string; active?: boolean; theme?: Theme; customColor?: string; onclick?: () => void; radius?: RadiusProp } = $props();
 </script>
 <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-<div class="item" class:active data-theme={theme} style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""} role="option" aria-selected={active} {onclick}>
+<div class="item" class:active data-theme={theme} style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}" role="option" aria-selected={active} {onclick}>
   {#if icon}<span class="icon">{icon}</span>{/if}
   <span class="label">{label}</span>
   {#if description}<span class="desc">{description}</span>{/if}

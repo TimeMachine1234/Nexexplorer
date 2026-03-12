@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   import type { Snippet } from "svelte";
 
   type Theme = "dark" | "light" | "glass" | "custom";
@@ -11,6 +12,7 @@
     theme?: Theme;
     customColor?: string;
     onclick?: (path: string) => void;
+    radius?: RadiusProp;
   }
 
   let {
@@ -21,13 +23,14 @@
     theme,
     customColor,
     onclick,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 </script>
 
 <button
   class="quick-access-item"
   data-theme={theme}
-  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+  style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
   title={path}
   onclick={() => onclick?.(path)}
 >

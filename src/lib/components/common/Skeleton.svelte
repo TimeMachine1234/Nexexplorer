@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   type Theme = "dark" | "light" | "glass" | "custom";
 
   interface Props {
@@ -7,6 +8,7 @@
     shape?: "rect" | "circle" | "squircle";
     theme?: Theme;
     customColor?: string;
+    radius?: RadiusProp;
   }
 
   let {
@@ -15,7 +17,8 @@
     shape = "rect",
     theme,
     customColor,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 </script>
 
 <div
@@ -23,7 +26,7 @@
   style:width={width}
   style:height={height}
   data-theme={theme}
-  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+  style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
 ></div>
 
 <style>

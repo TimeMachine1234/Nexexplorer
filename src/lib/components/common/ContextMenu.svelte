@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   import { tick } from "svelte";
 
   interface MenuItem {
@@ -20,9 +21,11 @@
     onClose: () => void;
     theme?: "dark" | "light" | "glass" | "custom";
     customColor?: string;
+    radius?: RadiusProp;
   }
 
-  let { items, x, y, onClose, theme, customColor }: Props = $props();
+  let { items, x, y, onClose, theme, customColor, radius,
+}: Props = $props();
 
   let menuEl = $state<HTMLDivElement | undefined>();
 
@@ -51,7 +54,7 @@
   <div
     bind:this={menuEl}
     class="ctx-menu"
-    style="left:{x}px; top:{y}px{theme === 'custom' && customColor ? `; --custom-color: ${customColor}` : ''}"
+    style="left:{x}px; top:{y}px{theme === 'custom' && customColor ? `; --custom-color: ${customColor};` : ''}{radiusVars(radius)}"
     onclick={(e) => e.stopPropagation()}
     role="menu"
   >

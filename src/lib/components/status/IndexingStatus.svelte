@@ -1,8 +1,9 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   type Theme = "dark" | "light" | "glass" | "custom";
-  let { status, progress, fileCount, theme, customColor }: { status: "idle"|"indexing"|"done"|"error"; progress?: number; fileCount?: number; theme?: Theme; customColor?: string } = $props();
+  let { status, progress, fileCount, theme, customColor, radius }: { status: "idle"|"indexing"|"done"|"error"; progress?: number; fileCount?: number; theme?: Theme; customColor?: string; radius?: RadiusProp } = $props();
 </script>
-<div class="is" data-theme={theme} style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}>
+<div class="is" data-theme={theme} style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}">
   {#if status === "indexing"}
     <div class="row"><svg class="spin" width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M14 8a6 6 0 1 1-1.5-3.9" stroke="#89b4fa" stroke-width="2" stroke-linecap="round"/><path d="M14 4v4h-4" stroke="#89b4fa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span class="txt">Indexing{fileCount != null ? ` · ${fileCount.toLocaleString()} files` : ""}{progress != null ? ` (${Math.round(progress)}%)` : ""}</span></div>

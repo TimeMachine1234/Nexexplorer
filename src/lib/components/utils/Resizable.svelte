@@ -78,27 +78,30 @@
   {@render children?.()}
 
   {#if direction === "horizontal" || direction === "both"}
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div
       class="resize-handle resize-handle--right"
-      role="separator"
+      role="presentation"
       aria-label="Resize horizontal"
       onmousedown={(e) => startResize(e, "x")}
     ></div>
   {/if}
 
   {#if direction === "vertical" || direction === "both"}
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div
       class="resize-handle resize-handle--bottom"
-      role="separator"
+      role="presentation"
       aria-label="Resize vertical"
       onmousedown={(e) => startResize(e, "y")}
     ></div>
   {/if}
 
   {#if direction === "both"}
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div
       class="resize-handle resize-handle--corner"
-      role="separator"
+      role="presentation"
       aria-label="Resize corner"
       onmousedown={(e) => startResize(e, "both")}
     ></div>

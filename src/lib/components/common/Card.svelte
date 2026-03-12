@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   import type { Snippet } from "svelte";
 
   type Theme = "dark" | "light" | "glass" | "custom";
@@ -10,15 +11,17 @@
     theme?: Theme;
     customColor?: string;
     children?: Snippet;
+    radius?: RadiusProp;
   }
 
-  let { padding = "md", hoverable = false, class: className = "", theme, customColor, children }: Props = $props();
+  let { padding = "md", hoverable = false, class: className = "", theme, customColor, children, radius,
+}: Props = $props();
 </script>
 
 <div
   class="card card--pad-{padding} {hoverable ? 'card--hoverable' : ''} {className}"
   data-theme={theme}
-  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+  style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
 >
   {@render children?.()}
 </div>

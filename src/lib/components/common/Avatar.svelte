@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   type Theme = "dark" | "light" | "glass" | "custom";
 
   interface Props {
@@ -9,6 +10,7 @@
     color?: string;
     theme?: Theme;
     customColor?: string;
+    radius?: RadiusProp;
   }
 
   let {
@@ -19,7 +21,8 @@
     color,
     theme,
     customColor,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 
   const sizeMap = { xs: 20, sm: 24, md: 32, lg: 40, xl: 48 };
   const px = $derived(sizeMap[size]);
@@ -47,6 +50,7 @@
     `font-size: ${fontSize}px;`,
     !src ? `background-color: ${bgColor};` : "",
     theme === "custom" && customColor ? `--custom-color: ${customColor};` : "",
+    radiusVars(radius),
   ].filter(Boolean).join("")}
 >
   {#if src}

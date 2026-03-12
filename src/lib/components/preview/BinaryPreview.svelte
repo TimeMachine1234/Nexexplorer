@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   type Theme = "dark" | "light" | "glass" | "custom";
-  let { data, maxBytes = 512, theme, customColor }: { data?: Uint8Array; maxBytes?: number; theme?: Theme; customColor?: string } = $props();
+  let { data, maxBytes = 512, theme, customColor, radius }: { data?: Uint8Array; maxBytes?: number; theme?: Theme; customColor?: string; radius?: RadiusProp } = $props();
   const BPR = 16;
   function hex(b: number) { return b.toString(16).padStart(2,"0"); }
   function ascii(b: number) { return b >= 32 && b < 127 ? String.fromCharCode(b) : "."; }
@@ -16,7 +17,7 @@
     return r;
   });
 </script>
-<div class="bp" data-theme={theme} style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}>
+<div class="bp" data-theme={theme} style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}">
   {#if !data || data.length === 0}
     <div class="empty">No binary data</div>
   {:else}

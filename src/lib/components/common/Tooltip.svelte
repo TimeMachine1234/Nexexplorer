@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   import type { Snippet } from "svelte";
 
   type Theme = "dark" | "light" | "glass" | "custom";
@@ -10,9 +11,11 @@
     theme?: Theme;
     customColor?: string;
     children?: Snippet;
+    radius?: RadiusProp;
   }
 
-  let { label, position = "top", delay = 600, theme, customColor, children }: Props = $props();
+  let { label, position = "top", delay = 600, theme, customColor, children, radius,
+}: Props = $props();
 
   let visible = $state(false);
   let timer = $state<ReturnType<typeof setTimeout> | null>(null);
@@ -41,7 +44,7 @@
       class="tooltip tooltip--{position}"
       role="tooltip"
       data-theme={theme}
-      style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+      style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
     >
       {label}
       <span class="tooltip-arrow tooltip-arrow--{position}"></span>

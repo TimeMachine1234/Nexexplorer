@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   import Dialog from "../common/Dialog.svelte";
   import Button from "../common/Button.svelte";
   import { theme as themeStore, themeMode, themeCustomColor } from "../../stores/theme";
@@ -10,6 +11,7 @@
     onclose?: () => void;
     theme?: Theme;
     customColor?: string;
+    radius?: RadiusProp;
   }
 
   let {
@@ -17,7 +19,8 @@
     onclose,
     theme,
     customColor,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 
   const themes: { value: Theme; label: string }[] = [
     { value: "dark",   label: "Dark"   },

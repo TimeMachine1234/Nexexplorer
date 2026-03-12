@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   import type { Snippet } from "svelte";
 
   type Theme = "dark" | "light" | "glass" | "custom";
@@ -20,6 +21,7 @@
     onblur?: (e?: FocusEvent) => void;
     onfocus?: (e: FocusEvent) => void;
     leadingIcon?: Snippet;
+    radius?: RadiusProp;
   }
 
   let {
@@ -39,14 +41,15 @@
     onblur,
     onfocus,
     leadingIcon,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 </script>
 
 <div
   class="input-wrapper {className}"
   class:has-icon={type === 'search' || leadingIcon}
   data-theme={theme}
-  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+  style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
 >
   {#if type === "search"}
     <span class="input-icon">

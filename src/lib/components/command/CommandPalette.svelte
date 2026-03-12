@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   type Theme = "dark" | "light" | "glass" | "custom";
 
   interface CommandItem {
@@ -18,6 +19,7 @@
     onselect,
     theme,
     customColor,
+    radius,
   }: {
     open?: boolean;
     commands?: CommandItem[];
@@ -25,6 +27,7 @@
     onselect?: (command: CommandItem) => void;
     theme?: Theme;
     customColor?: string;
+    radius?: RadiusProp;
   } = $props();
 
   let query = $state("");
@@ -98,7 +101,7 @@
 
 {#if open}
   <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
-  <div class="backdrop" data-theme={theme} style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""} onclick={(e) => { if (e.target === e.currentTarget) close(); }}>
+  <div class="backdrop" data-theme={theme} style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}" onclick={(e) => { if (e.target === e.currentTarget) close(); }}>
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div class="panel" role="dialog" aria-modal="true" aria-label="Command palette" onkeydown={onkeydown}>
       <div class="search-row">

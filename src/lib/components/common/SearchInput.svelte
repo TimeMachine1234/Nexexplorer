@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   type Theme = "dark" | "light" | "glass" | "custom";
 
   interface Props {
@@ -11,6 +12,7 @@
     oninput?: (value: string) => void;
     onclear?: () => void;
     onsearch?: (value: string) => void;
+    radius?: RadiusProp;
   }
 
   let {
@@ -23,7 +25,8 @@
     oninput,
     onclear,
     onsearch,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 
   function handleInput(e: Event) {
     value = (e.target as HTMLInputElement).value;
@@ -49,7 +52,7 @@
   class="search-input search-input--{size}"
   class:search-input--disabled={disabled}
   data-theme={theme}
-  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+  style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
 >
   <span class="search-icon" aria-hidden="true">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">

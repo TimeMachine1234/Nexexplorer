@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   import type { Snippet } from "svelte";
 
   type Theme = "dark" | "light" | "glass" | "custom";
@@ -10,6 +11,7 @@
     theme?: Theme;
     customColor?: string;
     children?: Snippet;
+    radius?: RadiusProp;
   }
 
   let {
@@ -19,7 +21,8 @@
     theme,
     customColor,
     children,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 
   const overflowX = $derived(direction === "horizontal" || direction === "both" ? "auto" : "hidden");
   const overflowY = $derived(direction === "vertical" || direction === "both" ? "auto" : "hidden");
@@ -33,6 +36,7 @@
     maxWidth ? `max-width: ${maxWidth};` : "",
     `overflow-x: ${overflowX}; overflow-y: ${overflowY};`,
     theme === "custom" && customColor ? `--custom-color: ${customColor};` : "",
+    radiusVars(radius),
   ].filter(Boolean).join("")}
 >
   {@render children?.()}

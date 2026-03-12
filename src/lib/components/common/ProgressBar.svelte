@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   type Theme = "dark" | "light" | "glass" | "custom";
 
   interface Props {
@@ -9,6 +10,7 @@
     label?: string;
     theme?: Theme;
     customColor?: string;
+    radius?: RadiusProp;
   }
 
   let {
@@ -19,7 +21,8 @@
     label,
     theme,
     customColor,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 
   const indeterminate = $derived(value === undefined || value === null);
   const clampedValue = $derived(indeterminate ? 0 : Math.min(100, Math.max(0, value!)));
@@ -28,7 +31,7 @@
 <div
   class="progress-wrap"
   data-theme={theme}
-  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+  style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
 >
   {#if label}
     <span class="progress-label">{label}</span>

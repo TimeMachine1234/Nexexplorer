@@ -1,9 +1,10 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   type Theme = "dark" | "light" | "glass" | "custom";
-  let { active = false, label, size = "sm", theme, customColor }: { active?: boolean; label?: string; size?: "xs"|"sm"|"md"; theme?: Theme; customColor?: string } = $props();
+  let { active = false, label, size = "sm", theme, customColor, radius }: { active?: boolean; label?: string; size?: "xs"|"sm"|"md"; theme?: Theme; customColor?: string; radius?: RadiusProp } = $props();
   const dotSize = $derived(size === "xs" ? 6 : size === "sm" ? 8 : 10);
 </script>
-<div class="ai" data-theme={theme} style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}>
+<div class="ai" data-theme={theme} style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}">
   <span class="dot" class:active style={`width:${dotSize}px;height:${dotSize}px`}></span>
   {#if label}<span class="lbl">{label}</span>{/if}
 </div>

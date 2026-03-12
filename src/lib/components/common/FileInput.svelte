@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   type Theme = "dark" | "light" | "glass" | "custom";
 
   interface Props {
@@ -9,6 +10,7 @@
     theme?: Theme;
     customColor?: string;
     onchange?: (files: FileList) => void;
+    radius?: RadiusProp;
   }
 
   let {
@@ -19,7 +21,8 @@
     theme,
     customColor,
     onchange,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 
   let inputEl = $state<HTMLInputElement | null>(null);
   let fileNames = $state<string[]>([]);
@@ -53,7 +56,7 @@
   class="file-input"
   class:file-input--disabled={disabled}
   data-theme={theme}
-  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+  style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
 >
   <input
     bind:this={inputEl}

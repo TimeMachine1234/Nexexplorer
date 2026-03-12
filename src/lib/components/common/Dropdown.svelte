@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   type Theme = "dark" | "light" | "glass" | "custom";
 
   interface Option {
@@ -16,6 +17,7 @@
     theme?: Theme;
     customColor?: string;
     onchange?: (value: string) => void;
+    radius?: RadiusProp;
   }
 
   let {
@@ -27,7 +29,8 @@
     theme,
     customColor,
     onchange,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 
   function handleChange(e: Event) {
     value = (e.target as HTMLSelectElement).value;
@@ -39,7 +42,7 @@
   class="dropdown dropdown--{size}"
   class:dropdown--disabled={disabled}
   data-theme={theme}
-  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+  style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
 >
   <select
     bind:value

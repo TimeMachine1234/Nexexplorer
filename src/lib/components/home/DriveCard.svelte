@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   import StorageIndicator from "./StorageIndicator.svelte";
 
   type Theme = "dark" | "light" | "glass" | "custom";
@@ -13,6 +14,7 @@
     theme?: Theme;
     customColor?: string;
     onclick?: (path: string) => void;
+    radius?: RadiusProp;
   }
 
   let {
@@ -24,7 +26,8 @@
     theme,
     customColor,
     onclick,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 
   const driveIcons: Record<DriveType, string> = {
     hdd:     "M3 6a2 2 0 012-2h14a2 2 0 012 2v3a2 2 0 01-2 2H5a2 2 0 01-2-2V6zm0 8a2 2 0 012-2h14a2 2 0 012 2v2a2 2 0 01-2 2H5a2 2 0 01-2-2v-2z",
@@ -37,7 +40,7 @@
 <button
   class="drive-card"
   data-theme={theme}
-  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+  style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
   title="{label} — {path}"
   onclick={() => onclick?.(path)}
 >

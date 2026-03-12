@@ -1,12 +1,13 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   import FileTypeIcon from '../icons/FileTypeIcon.svelte';
   type Theme = "dark" | "light" | "glass" | "custom";
   interface ArchiveEntry { name: string; path: string; size: number; isDir: boolean; }
-  let { entries, theme, customColor }: { entries?: ArchiveEntry[]; theme?: Theme; customColor?: string } = $props();
+  let { entries, theme, customColor, radius }: { entries?: ArchiveEntry[]; theme?: Theme; customColor?: string; radius?: RadiusProp } = $props();
   function fmt(b: number) { return b < 1024 ? b + " B" : b < 1048576 ? (b/1024).toFixed(1) + " KB" : (b/1048576).toFixed(1) + " MB"; }
   function ext(n: string) { const d = n.lastIndexOf("."); return d >= 0 ? n.slice(d+1) : ""; }
 </script>
-<div class="ap" data-theme={theme} style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}>
+<div class="ap" data-theme={theme} style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}">
   {#if !entries || entries.length === 0}
     <div class="empty">Archive is empty</div>
   {:else}

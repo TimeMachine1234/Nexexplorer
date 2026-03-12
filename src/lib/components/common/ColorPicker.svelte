@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   type Theme = "dark" | "light" | "glass" | "custom";
 
   interface Props {
@@ -8,6 +9,7 @@
     theme?: Theme;
     customColor?: string;
     onchange?: (color: string) => void;
+    radius?: RadiusProp;
   }
 
   let {
@@ -17,7 +19,8 @@
     theme,
     customColor,
     onchange,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 
   let colorInputEl = $state<HTMLInputElement | null>(null);
   let hexInput = $state(value);
@@ -59,7 +62,7 @@
   class="color-picker"
   class:color-picker--disabled={disabled}
   data-theme={theme}
-  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+  style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
 >
   {#if label}
     <span class="color-picker-label">{label}</span>

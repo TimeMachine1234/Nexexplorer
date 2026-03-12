@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   type Theme = "dark" | "light" | "glass" | "custom";
 
   interface Props {
@@ -7,9 +8,11 @@
     label?: string;
     theme?: Theme;
     customColor?: string;
+    radius?: RadiusProp;
   }
 
-  let { totalBytes, freeBytes, label, theme, customColor }: Props = $props();
+  let { totalBytes, freeBytes, label, theme, customColor, radius,
+}: Props = $props();
 
   const usedBytes = $derived(totalBytes - freeBytes);
   const usedPercent = $derived(totalBytes > 0 ? (usedBytes / totalBytes) * 100 : 0);
@@ -31,7 +34,7 @@
 <div
   class="storage-indicator"
   data-theme={theme}
-  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+  style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
 >
   {#if label}
     <span class="storage-label">{label}</span>

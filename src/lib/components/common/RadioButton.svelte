@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   type Theme = "dark" | "light" | "glass" | "custom";
 
   interface Props {
@@ -10,6 +11,7 @@
     theme?: Theme;
     customColor?: string;
     onchange?: (value: string) => void;
+    radius?: RadiusProp;
   }
 
   let {
@@ -21,7 +23,8 @@
     theme,
     customColor,
     onchange,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 
   function select() {
     if (disabled || checked) return;
@@ -40,7 +43,7 @@
 <div
   class="radio-wrapper"
   data-theme={theme}
-  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+  style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
 >
   <div
     class="radio"

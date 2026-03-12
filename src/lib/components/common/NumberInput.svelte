@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   type Theme = "dark" | "light" | "glass" | "custom";
 
   interface Props {
@@ -11,6 +12,7 @@
     theme?: Theme;
     customColor?: string;
     onchange?: (value: number) => void;
+    radius?: RadiusProp;
   }
 
   let {
@@ -23,7 +25,8 @@
     theme,
     customColor,
     onchange,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 
   function clamp(v: number) {
     if (min !== undefined && v < min) return min;
@@ -72,7 +75,7 @@
   class="number-input number-input--{size}"
   class:number-input--disabled={disabled}
   data-theme={theme}
-  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+  style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
 >
   <button
     type="button"

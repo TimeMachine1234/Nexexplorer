@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   import type { Snippet } from "svelte";
 
   type Theme = "dark" | "light" | "glass" | "custom";
@@ -10,6 +11,7 @@
     theme?: Theme;
     customColor?: string;
     children?: Snippet;
+    radius?: RadiusProp;
   }
 
   let {
@@ -19,7 +21,8 @@
     theme,
     customColor,
     children,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 
   let hovered = $state(false);
   let containerEl = $state<HTMLDivElement | undefined>();
@@ -52,7 +55,7 @@
   class:ctx-submenu-item--disabled={disabled}
   class:ctx-submenu-item--open={hovered}
   data-theme={theme}
-  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+  style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
   onmouseenter={handleMouseEnter}
   onmouseleave={handleMouseLeave}
   role="menuitem"

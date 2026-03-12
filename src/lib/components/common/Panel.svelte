@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   import type { Snippet } from "svelte";
 
   type Theme = "dark" | "light" | "glass" | "custom";
@@ -11,6 +12,7 @@
     customColor?: string;
     class?: string;
     children?: Snippet;
+    radius?: RadiusProp;
   }
 
   let {
@@ -21,7 +23,8 @@
     customColor,
     class: className = "",
     children,
-  }: Props = $props();
+    radius,
+}: Props = $props();
 </script>
 
 <div
@@ -29,7 +32,7 @@
   class:panel--elevated={elevated}
   class:panel--inset={inset}
   data-theme={theme}
-  style={theme === "custom" && customColor ? `--custom-color: ${customColor}` : ""}
+  style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
 >
   {@render children?.()}
 </div>
