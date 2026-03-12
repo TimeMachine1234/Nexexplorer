@@ -1,14 +1,21 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   import type { Snippet } from "svelte";
+
+  type Theme = "dark" | "light" | "glass" | "custom";
 
   interface Props {
     label: string;
     position?: "top" | "bottom" | "left" | "right";
     delay?: number;
+    theme?: Theme;
+    customColor?: string;
     children?: Snippet;
+    radius?: RadiusProp;
   }
 
-  let { label, position = "top", delay = 600, children }: Props = $props();
+  let { label, position = "top", delay = 600, theme, customColor, children, radius,
+}: Props = $props();
 
   let visible = $state(false);
   let timer = $state<ReturnType<typeof setTimeout> | null>(null);
@@ -33,7 +40,12 @@
 >
   {@render children?.()}
   {#if visible}
-    <div class="tooltip tooltip--{position}" role="tooltip">
+    <div
+      class="tooltip tooltip--{position}"
+      role="tooltip"
+      data-theme={theme}
+      style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
+    >
       {label}
       <span class="tooltip-arrow tooltip-arrow--{position}"></span>
     </div>
@@ -53,7 +65,7 @@
     z-index: var(--z-toast, 400);
     background: var(--surface-raised);
     border: 1px solid var(--border-active);
-    border-radius: var(--radius-sm);
+    border-radius: var(--sq-sm);
     padding: 4px 8px;
     font-size: 11px;
     color: var(--text-secondary);

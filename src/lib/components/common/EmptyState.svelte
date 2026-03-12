@@ -1,14 +1,21 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   import type { Snippet } from "svelte";
+
+  type Theme = "dark" | "light" | "glass" | "custom";
 
   interface Props {
     type?: "loading" | "error" | "empty";
     message?: string;
     description?: string;
     action?: Snippet;
+    theme?: Theme;
+    customColor?: string;
+    radius?: RadiusProp;
   }
 
-  let { type = "empty", message, description, action }: Props = $props();
+  let { type = "empty", message, description, action, theme, customColor, radius,
+}: Props = $props();
 
   const defaults: Record<string, { label: string; icon: string; desc: string }> = {
     loading: { label: "Loading...",           icon: "⏳", desc: "Fetching contents" },
@@ -21,7 +28,7 @@
   let subtitle = $derived(description ?? info.desc);
 </script>
 
-<div class="empty-state empty-state--{type}">
+<div class="empty-state empty-state--{type}" data-theme={theme} style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}">
   <span class="empty-icon" aria-hidden="true">{info.icon}</span>
   <p class="empty-title">{title}</p>
   <p class="empty-desc">{subtitle}</p>
@@ -54,6 +61,7 @@
     margin-bottom: 4px;
     display: block;
     opacity: 0.55;
+    border-radius: var(--sq-icon, 28%);
   }
 
   .empty-title {

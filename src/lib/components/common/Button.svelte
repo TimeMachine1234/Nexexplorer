@@ -1,5 +1,8 @@
 <script lang="ts">
+  import { radiusVars, type RadiusProp } from '$lib/utils/squircle';
   import type { Snippet } from "svelte";
+
+  type Theme = "dark" | "light" | "glass" | "custom";
 
   interface Props {
     variant?: "default" | "primary" | "danger" | "ghost" | "link";
@@ -8,10 +11,13 @@
     type?: "button" | "submit";
     title?: string;
     class?: string;
+    theme?: Theme;
+    customColor?: string;
     onclick?: (e: MouseEvent) => void;
     children?: Snippet;
     icon?: Snippet;
     [key: string]: unknown;
+    radius?: RadiusProp;
   }
 
   let {
@@ -21,11 +27,14 @@
     type = "button",
     title,
     class: className = "",
+    theme,
+    customColor,
     onclick,
     children,
     icon,
+    radius,
     ...restProps
-  }: Props = $props();
+}: Props = $props();
 </script>
 
 <!-- svelte-ignore a11y_consider_explicit_label -->
@@ -35,6 +44,8 @@
   {title}
   {onclick}
   class="btn btn--{variant} btn--{size} {className}"
+  data-theme={theme}
+  style="{theme === 'custom' && customColor ? `--custom-color: ${customColor};` : ''}{radiusVars(radius)}"
   {...restProps}
 >
   {#if icon}
@@ -49,7 +60,7 @@
     align-items: center;
     justify-content: center;
     gap: 5px;
-    border-radius: var(--radius-sm);
+    border-radius: var(--sq-md);
     font-family: inherit;
     font-weight: 450;
     letter-spacing: 0.01em;
@@ -149,5 +160,25 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+  }
+
+  .btn[data-theme="glass"],
+  :global([data-theme="glass"]) .btn {
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+  }
+
+  .btn[data-theme="light"].btn--default,
+  :global([data-theme="light"]) .btn--default {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: rgba(0, 0, 0, 0.12);
+    color: #374151;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+  .btn[data-theme="light"].btn--default:hover:not(:disabled),
+  :global([data-theme="light"]) .btn--default:hover:not(:disabled) {
+    background: #ffffff;
+    border-color: rgba(0, 0, 0, 0.2);
+    color: #111827;
   }
 </style>
