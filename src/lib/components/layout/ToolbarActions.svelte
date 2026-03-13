@@ -127,17 +127,17 @@
   }
 
   .tb-btn {
-    width: 26px;
-    height: 26px;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
     border: none;
     background: none;
-    color: var(--text-muted);
+    color: var(--text-dim);
     cursor: pointer;
-    border-radius: 4px;
-    transition: background-color 0.1s, color 0.1s;
+    border-radius: 5px;
+    transition: background-color 0.08s, color 0.08s;
     padding: 0;
   }
 

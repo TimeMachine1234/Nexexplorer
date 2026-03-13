@@ -41,7 +41,7 @@
   .dialog-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(0, 0, 0, 0.3);
+    background: rgba(0, 0, 0, 0.4);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -49,18 +49,19 @@
   }
 
   .dialog {
-    background: var(--surface-high);
+    background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 12px 16px;
-    min-width: 280px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    border-radius: 8px;
+    padding: 16px 20px;
+    min-width: 300px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.2);
   }
 
   .dialog-title {
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 10px;
   }
 
   .dialog-body {
@@ -72,7 +73,7 @@
   .dialog-actions {
     display: flex;
     gap: 6px;
-    margin-top: 10px;
+    margin-top: 14px;
     justify-content: flex-end;
   }
 </style>

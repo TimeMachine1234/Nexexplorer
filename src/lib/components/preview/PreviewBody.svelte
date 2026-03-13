@@ -200,7 +200,13 @@
       <div class="archive-list">
         {#each archiveData.entries as entry}
           <div class="archive-item" class:is-dir={entry.is_dir}>
-            <span class="archive-icon">{entry.is_dir ? "📁" : "📄"}</span>
+            <span class="archive-icon">
+              {#if entry.is_dir}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M2 6a2 2 0 012-2h5l2 2h9a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" fill="#f0c75e" opacity="0.85"/><path d="M2 10h20v8a2 2 0 01-2 2H4a2 2 0 01-2-2v-8z" fill="#f0c75e"/></svg>
+              {:else}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 2h8l6 6v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z" fill="#9aa0a6" opacity="0.15"/><path d="M6 2h8l6 6v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z" stroke="#9aa0a6" stroke-width="1.5"/><path d="M14 2v6h6" stroke="#9aa0a6" stroke-width="1.5"/></svg>
+              {/if}
+            </span>
             <span class="archive-name">{entry.name}</span>
             {#if !entry.is_dir}
               <span class="archive-size">{formatBytes(entry.size)}</span>
@@ -220,7 +226,15 @@
 
   {:else if previewType === "document"}
     <div class="document-container">
-      <div class="doc-icon">{getDocIcon(metadataExtension ?? "")}</div>
+      <div class="doc-icon">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none">
+          <path d="M6 2h8l6 6v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z" fill="var(--accent)" opacity="0.15"/>
+          <path d="M6 2h8l6 6v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z" stroke="var(--accent)" stroke-width="1.5"/>
+          <path d="M14 2v6h6" stroke="var(--accent)" stroke-width="1.5"/>
+          <line x1="8" y1="13" x2="16" y2="13" stroke="var(--accent)" stroke-width="1.2"/>
+          <line x1="8" y1="16" x2="14" y2="16" stroke="var(--accent)" stroke-width="1.2"/>
+        </svg>
+      </div>
       <div class="doc-name">{metadataName}</div>
       <div class="doc-type">{getDocLabel(metadataExtension ?? "")}</div>
       <button class="open-btn" onclick={onOpenWithSystem}>Open with default app</button>
@@ -475,13 +489,15 @@
     color: var(--text);
   }
 
-  .archive-item.is-dir { color: var(--folder-yellow); }
+  .archive-item.is-dir { color: var(--text); }
 
   .archive-icon {
-    font-size: 12px;
     width: 18px;
     text-align: center;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .archive-name {

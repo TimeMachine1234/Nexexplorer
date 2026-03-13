@@ -243,7 +243,15 @@
         {/key}
       {:else if previewType === "document"}
         <div class="quick-doc">
-          <div class="quick-doc-icon">{getDocIcon(metadata?.extension ?? "")}</div>
+          <div class="quick-doc-icon">
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+              <path d="M6 2h8l6 6v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z" fill="var(--accent)" opacity="0.15"/>
+              <path d="M6 2h8l6 6v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z" stroke="var(--accent)" stroke-width="1.5"/>
+              <path d="M14 2v6h6" stroke="var(--accent)" stroke-width="1.5"/>
+              <line x1="8" y1="13" x2="16" y2="13" stroke="var(--accent)" stroke-width="1.2"/>
+              <line x1="8" y1="16" x2="14" y2="16" stroke="var(--accent)" stroke-width="1.2"/>
+            </svg>
+          </div>
           <div class="quick-doc-name">{metadata?.name}</div>
           <div class="quick-doc-type">{getDocLabel(metadata?.extension ?? "")}</div>
           <button class="quick-open-btn" onclick={openWithSystem}>Open with default app</button>
@@ -381,7 +389,9 @@
   }
 
   .quick-doc-icon {
-    font-size: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .quick-doc-name {

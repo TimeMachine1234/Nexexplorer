@@ -2,6 +2,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { pinnedFolders } from "../../stores/sidebar";
   import { homeSettings } from "../../stores/home";
+  import FileIcon from "../common/FileIcon.svelte";
 
   interface Props {
     onNavigate: (path: string) => void;
@@ -79,21 +80,6 @@
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
   }
 
-  function getFileIcon(entry: RecentEntry): string {
-    if (entry.is_dir) return "📁";
-    const ext = entry.extension.toLowerCase();
-    if (["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"].includes(ext)) return "🖼️";
-    if (["mp4", "mkv", "avi", "mov", "webm"].includes(ext)) return "🎬";
-    if (["mp3", "wav", "flac", "ogg", "aac"].includes(ext)) return "🎵";
-    if (["pdf"].includes(ext)) return "📕";
-    if (["zip", "rar", "7z", "tar", "gz"].includes(ext)) return "📦";
-    if (["exe", "msi"].includes(ext)) return "⚙️";
-    if (["doc", "docx", "txt", "md", "rtf"].includes(ext)) return "📄";
-    if (["xls", "xlsx", "csv"].includes(ext)) return "📊";
-    if (["ppt", "pptx"].includes(ext)) return "📽️";
-    return "📄";
-  }
-
   function handleClick(entry: RecentEntry) {
     if (entry.is_dir) {
       onNavigate(entry.path);
@@ -138,7 +124,7 @@
       {#each items as entry}
         <button class="recent-row" onclick={() => handleClick(entry)} title={entry.path}>
           <span class="col-name">
-            <span class="file-icon">{getFileIcon(entry)}</span>
+            <FileIcon extension={entry.extension ? `.${entry.extension}` : ""} isDir={entry.is_dir} size={16} />
             <span class="file-name">{entry.name}</span>
           </span>
           <span class="col-loc">{entry.parent_name}</span>

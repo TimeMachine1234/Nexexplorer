@@ -33,13 +33,13 @@
 
 <style>
   .section {
-    margin-bottom: 4px;
+    margin-bottom: 2px;
   }
 
   .section-header {
     display: flex;
     align-items: center;
-    padding-right: 6px;
+    padding-right: 8px;
   }
 
   .section-toggle {
@@ -47,10 +47,10 @@
     display: flex;
     align-items: center;
     gap: 4px;
-    padding: 5px 6px 5px 10px;
+    padding: 6px 6px 6px 10px;
     border: none;
     background: none;
-    color: var(--text-muted);
+    color: var(--text-dim);
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
@@ -58,16 +58,16 @@
     cursor: pointer;
     font-family: inherit;
     text-align: left;
-    transition: color 0.1s;
+    transition: color 0.08s;
     width: 100%;
   }
 
   .section-toggle:hover {
-    color: var(--text);
+    color: var(--text-muted);
   }
 
   .chevron {
-    font-size: 11px;
+    font-size: 10px;
     display: inline-block;
     transform: rotate(90deg);
     transition: transform 0.15s;
@@ -83,7 +83,7 @@
     display: flex;
     gap: 2px;
     opacity: 0;
-    transition: opacity 0.1s;
+    transition: opacity 0.08s;
   }
 
   .section:hover .section-actions {
