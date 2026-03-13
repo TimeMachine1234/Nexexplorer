@@ -79,19 +79,18 @@
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
   }
 
-  function getFileIcon(entry: RecentEntry): string {
-    if (entry.is_dir) return "📁";
+  function getFileIconPath(entry: RecentEntry): string {
+    if (entry.is_dir) return "M2 4h4l2 2h6a1 1 0 011 1v6a1 1 0 01-1 1H2a1 1 0 01-1-1V5a1 1 0 011-1z";
     const ext = entry.extension.toLowerCase();
-    if (["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"].includes(ext)) return "🖼️";
-    if (["mp4", "mkv", "avi", "mov", "webm"].includes(ext)) return "🎬";
-    if (["mp3", "wav", "flac", "ogg", "aac"].includes(ext)) return "🎵";
-    if (["pdf"].includes(ext)) return "📕";
-    if (["zip", "rar", "7z", "tar", "gz"].includes(ext)) return "📦";
-    if (["exe", "msi"].includes(ext)) return "⚙️";
-    if (["doc", "docx", "txt", "md", "rtf"].includes(ext)) return "📄";
-    if (["xls", "xlsx", "csv"].includes(ext)) return "📊";
-    if (["ppt", "pptx"].includes(ext)) return "📽️";
-    return "📄";
+    if (["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"].includes(ext))
+      return "M2 3h12a1 1 0 011 1v8a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1zm3.5 3a1 1 0 100-2 1 1 0 000 2zM15 11l-4-4-3 3-2-2-5 5";
+    if (["mp4", "mkv", "avi", "mov", "webm"].includes(ext))
+      return "M2 4h9a1 1 0 011 1v6a1 1 0 01-1 1H2a1 1 0 01-1-1V5a1 1 0 011-1zm10 2l3-1.5v5L12 8";
+    if (["mp3", "wav", "flac", "ogg", "aac"].includes(ext))
+      return "M6 14V5l8-2v9M6 14a2 2 0 11-4 0 2 2 0 014 0zm8-2a2 2 0 11-4 0 2 2 0 014 0z";
+    if (["zip", "rar", "7z", "tar", "gz"].includes(ext))
+      return "M3 2h10a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1zm4 2h2M7 6h2M7 8h2M6 10h4v3H6v-3z";
+    return "M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1zm5 0v4h4";
   }
 
   function handleClick(entry: RecentEntry) {
@@ -138,7 +137,11 @@
       {#each items as entry}
         <button class="recent-row" onclick={() => handleClick(entry)} title={entry.path}>
           <span class="col-name">
-            <span class="file-icon">{getFileIcon(entry)}</span>
+            <span class="file-icon">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d={getFileIconPath(entry)}/>
+              </svg>
+            </span>
             <span class="file-name">{entry.name}</span>
           </span>
           <span class="col-loc">{entry.parent_name}</span>
@@ -225,7 +228,13 @@
     overflow: hidden;
   }
 
-  .file-icon { font-size: 14px; flex-shrink: 0; }
+  .file-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--text-muted);
+  }
 
   .file-name {
     overflow: hidden;

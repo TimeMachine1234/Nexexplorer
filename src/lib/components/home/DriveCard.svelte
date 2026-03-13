@@ -46,7 +46,7 @@
 >
   <div class="drive-header">
     <span class="drive-icon">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <path d={driveIcons[driveType]} />
       </svg>
     </span>
@@ -63,10 +63,10 @@
   .drive-card {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 12px 14px;
-    border-radius: var(--sq-lg);
-    border: 1px solid var(--border);
+    gap: 6px;
+    padding: 8px 10px;
+    border-radius: var(--radius-xs);
+    border: 1px solid var(--border-subtle);
     background: var(--surface);
     color: var(--text-secondary);
     font-family: inherit;
@@ -74,15 +74,13 @@
     text-align: left;
     transition:
       background var(--transition-fast),
-      border-color var(--transition-fast),
-      box-shadow var(--transition-fast);
+      border-color var(--transition-fast);
     min-width: 0;
   }
 
   .drive-card:hover {
-    background: var(--surface-raised);
-    border-color: var(--border-active);
-    box-shadow: var(--shadow-sm);
+    background: var(--surface-high);
+    border-color: var(--border);
   }
 
   .drive-header {
@@ -95,12 +93,12 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: var(--accent);
+    color: var(--text-muted);
     flex-shrink: 0;
   }
 
   .drive-label {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
     color: var(--text);
     white-space: nowrap;
@@ -118,7 +116,6 @@
 
   .drive-card[data-theme="glass"],
   :global([data-theme="glass"]) .drive-card {
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    background: var(--surface);
   }
 </style>

@@ -91,6 +91,26 @@
   }: Props = $props();
 
   let textLines = $derived(textContent?.content.split("\n") ?? []);
+
+  function getDocIconPath(ext: string): string {
+    switch (ext.toLowerCase()) {
+      case "pdf": return "M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1zm5 0v4h4M5 8h2a1 1 0 010 2H5V8z";
+      case "doc": case "docx": return "M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1zm5 0v4h4M5 9l1.5 4L8 10l1.5 3L11 9";
+      case "xls": case "xlsx": return "M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1zm5 0v4h4M5 8h6M5 10h6M5 12h6M8 8v4";
+      case "ppt": case "pptx": return "M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1zm5 0v4h4M6 8h3a1.5 1.5 0 010 3H6V8z";
+      default: return "M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1zm5 0v4h4";
+    }
+  }
+
+  function getDocIconColor(ext: string): string {
+    switch (ext.toLowerCase()) {
+      case "pdf": return "#e74c3c";
+      case "doc": case "docx": return "#2b579a";
+      case "xls": case "xlsx": return "#217346";
+      case "ppt": case "pptx": return "#d24726";
+      default: return "var(--text-muted)";
+    }
+  }
 </script>
 
 <div class="preview-body" class:body-pdf={previewType === "pdf"}>
@@ -200,7 +220,13 @@
       <div class="archive-list">
         {#each archiveData.entries as entry}
           <div class="archive-item" class:is-dir={entry.is_dir}>
-            <span class="archive-icon">{entry.is_dir ? "📁" : "📄"}</span>
+            <span class="archive-icon">
+              {#if entry.is_dir}
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="var(--folder-yellow)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h4l2 2h6a1 1 0 011 1v6a1 1 0 01-1 1H2a1 1 0 01-1-1V5a1 1 0 011-1z"/></svg>
+              {:else}
+                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1zm5 0v4h4"/></svg>
+              {/if}
+            </span>
             <span class="archive-name">{entry.name}</span>
             {#if !entry.is_dir}
               <span class="archive-size">{formatBytes(entry.size)}</span>
@@ -220,7 +246,11 @@
 
   {:else if previewType === "document"}
     <div class="document-container">
-      <div class="doc-icon">{getDocIcon(metadataExtension ?? "")}</div>
+      <div class="doc-icon">
+        <svg width="56" height="56" viewBox="0 0 16 16" fill="none" stroke={getDocIconColor(metadataExtension ?? "")} stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d={getDocIconPath(metadataExtension ?? "")}/>
+        </svg>
+      </div>
       <div class="doc-name">{metadataName}</div>
       <div class="doc-type">{getDocLabel(metadataExtension ?? "")}</div>
       <button class="open-btn" onclick={onOpenWithSystem}>Open with default app</button>
@@ -478,9 +508,10 @@
   .archive-item.is-dir { color: var(--folder-yellow); }
 
   .archive-icon {
-    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     width: 18px;
-    text-align: center;
     flex-shrink: 0;
   }
 
@@ -516,7 +547,11 @@
     flex: 1;
   }
 
-  .doc-icon { font-size: 56px; }
+  .doc-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 
   .doc-name {
     font-size: 13px;

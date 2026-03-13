@@ -8,11 +8,22 @@
 
   let { onNavigate }: Props = $props();
 
+  // SVG icon paths (16x16 viewBox)
+  const iconPaths: Record<string, string> = {
+    desktop:   "M2 3h12a1 1 0 011 1v7a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1zm3 11h6M8 12v2",
+    documents: "M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1zm5 0v4h4",
+    downloads: "M8 1v9m-3-3l3 3 3-3M3 13h10a1 1 0 011 1v0a1 1 0 01-1 1H3a1 1 0 01-1-1v0a1 1 0 011-1z",
+    pictures:  "M2 3h12a1 1 0 011 1v8a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1zm3.5 3a1 1 0 100-2 1 1 0 000 2zM15 11l-4-4-3 3-2-2-5 5",
+    videos:    "M2 4h9a1 1 0 011 1v6a1 1 0 01-1 1H2a1 1 0 01-1-1V5a1 1 0 011-1zm10 2l3-1.5v5L12 8",
+    music:     "M6 14V5l8-2v9M6 14a2 2 0 11-4 0 2 2 0 014 0zm8-2a2 2 0 11-4 0 2 2 0 014 0z",
+    pin:       "M9.828 4.172L6.586 7.414 3 7l-.707-.707 5.657-5.657L8.657 1l-.414 3.586 3.242-3.243a1 1 0 011.414 0l.344.344a1 1 0 010 1.414L10 6.344M6.586 7.414l-4.243 4.243M8 14h6",
+    folder:    "M2 4h4l2 2h6a1 1 0 011 1v6a1 1 0 01-1 1H2a1 1 0 01-1-1V5a1 1 0 011-1z",
+  };
+
   interface QuickItem {
     name: string;
     path: string;
-    icon: string;
-    color: string;
+    iconKey: string;
   }
 
   let items = $state<QuickItem[]>([]);
@@ -26,12 +37,12 @@
       const home = await tauriHomeDir();
       const base = home.endsWith("\\") || home.endsWith("/") ? home : home + "\\";
       items = [
-        { name: "Desktop", path: `${base}Desktop`, icon: "🖥️", color: "#4fc3f7" },
-        { name: "Documents", path: `${base}Documents`, icon: "📄", color: "#ffd54f" },
-        { name: "Downloads", path: `${base}Downloads`, icon: "⬇️", color: "#81c784" },
-        { name: "Pictures", path: `${base}Pictures`, icon: "🖼️", color: "#ce93d8" },
-        { name: "Videos", path: `${base}Videos`, icon: "🎬", color: "#ef5350" },
-        { name: "Music", path: `${base}Music`, icon: "🎵", color: "#ff8a65" },
+        { name: "Desktop", path: `${base}Desktop`, iconKey: "desktop" },
+        { name: "Documents", path: `${base}Documents`, iconKey: "documents" },
+        { name: "Downloads", path: `${base}Downloads`, iconKey: "downloads" },
+        { name: "Pictures", path: `${base}Pictures`, iconKey: "pictures" },
+        { name: "Videos", path: `${base}Videos`, iconKey: "videos" },
+        { name: "Music", path: `${base}Music`, iconKey: "music" },
       ];
     } catch {
       items = [];
@@ -44,18 +55,22 @@
 <div class="qa-grid">
   {#each items as item}
     <button class="qa-card" onclick={() => onNavigate(item.path)} title={item.path}>
-      <div class="qa-icon" style="background-color: {item.color}20; border-color: {item.color}40">
-        <span>{item.icon}</span>
-      </div>
+      <span class="qa-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d={iconPaths[item.iconKey]}/>
+        </svg>
+      </span>
       <span class="qa-label">{item.name}</span>
     </button>
   {/each}
 
   {#each pins as pin}
     <button class="qa-card" onclick={() => onNavigate(pin.path)} title={pin.path}>
-      <div class="qa-icon" style="background-color: #f4b94220; border-color: #f4b94240">
-        <span>📌</span>
-      </div>
+      <span class="qa-icon">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d={iconPaths.pin}/>
+        </svg>
+      </span>
       <span class="qa-label">{pin.name}</span>
     </button>
   {/each}
@@ -64,44 +79,47 @@
 <style>
   .qa-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 8px;
-    padding: 8px 0;
+    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+    gap: 2px;
+    padding: 4px 0;
   }
 
   .qa-card {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
-    padding: 12px 8px;
-    border-radius: 8px;
+    gap: 4px;
+    padding: 8px 6px;
+    border-radius: var(--radius-sm);
     border: 1px solid transparent;
     background: transparent;
     cursor: pointer;
-    transition: background 0.15s, border-color 0.15s;
+    transition: background 0.1s;
     color: var(--text);
   }
 
   .qa-card:hover {
     background: var(--surface-high);
-    border-color: var(--border);
   }
 
   .qa-icon {
-    width: 48px;
-    height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 10px;
-    border: 1px solid;
-    font-size: 24px;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    background: var(--surface-high);
+    color: var(--text-secondary);
+  }
+
+  .qa-card:hover .qa-icon {
+    color: var(--accent);
   }
 
   .qa-label {
-    font-size: 12px;
-    color: var(--text);
+    font-size: 11px;
+    color: var(--text-secondary);
     text-align: center;
     overflow: hidden;
     text-overflow: ellipsis;

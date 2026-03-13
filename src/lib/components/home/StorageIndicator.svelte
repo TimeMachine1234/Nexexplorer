@@ -55,7 +55,7 @@
   .storage-indicator {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 4px;
     width: 100%;
   }
 
@@ -66,15 +66,15 @@
   }
 
   .storage-bar-track {
-    height: 4px;
+    height: 3px;
     background: var(--surface-raised);
-    border-radius: var(--sq-full);
+    border-radius: 2px;
     overflow: hidden;
   }
 
   .storage-bar-fill {
     height: 100%;
-    border-radius: var(--sq-full);
+    border-radius: 2px;
     transition: width var(--transition-slow);
   }
 

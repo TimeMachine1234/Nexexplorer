@@ -168,13 +168,23 @@
     } catch { /* ignore */ }
   }
 
-  function getDocIcon(ext: string): string {
+  function getDocIconPath(ext: string): string {
     switch (ext.toLowerCase()) {
-      case "pdf": return "📕";
-      case "doc": case "docx": return "📘";
-      case "xls": case "xlsx": return "📗";
-      case "ppt": case "pptx": return "📙";
-      default: return "📄";
+      case "pdf": return "M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1zm5 0v4h4M5 8h2a1 1 0 010 2H5V8z";
+      case "doc": case "docx": return "M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1zm5 0v4h4M5 9l1.5 4L8 10l1.5 3L11 9";
+      case "xls": case "xlsx": return "M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1zm5 0v4h4M5 8h6M5 10h6M5 12h6M8 8v4";
+      case "ppt": case "pptx": return "M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1zm5 0v4h4M6 8h3a1.5 1.5 0 010 3H6V8z";
+      default: return "M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1zm5 0v4h4";
+    }
+  }
+
+  function getDocIconColor(ext: string): string {
+    switch (ext.toLowerCase()) {
+      case "pdf": return "#e74c3c";
+      case "doc": case "docx": return "#2b579a";
+      case "xls": case "xlsx": return "#217346";
+      case "ppt": case "pptx": return "#d24726";
+      default: return "var(--text-muted)";
     }
   }
 
@@ -243,7 +253,11 @@
         {/key}
       {:else if previewType === "document"}
         <div class="quick-doc">
-          <div class="quick-doc-icon">{getDocIcon(metadata?.extension ?? "")}</div>
+          <div class="quick-doc-icon">
+            <svg width="56" height="56" viewBox="0 0 16 16" fill="none" stroke={getDocIconColor(metadata?.extension ?? "")} stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d={getDocIconPath(metadata?.extension ?? "")}/>
+            </svg>
+          </div>
           <div class="quick-doc-name">{metadata?.name}</div>
           <div class="quick-doc-type">{getDocLabel(metadata?.extension ?? "")}</div>
           <button class="quick-open-btn" onclick={openWithSystem}>Open with default app</button>
@@ -381,7 +395,9 @@
   }
 
   .quick-doc-icon {
-    font-size: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .quick-doc-name {

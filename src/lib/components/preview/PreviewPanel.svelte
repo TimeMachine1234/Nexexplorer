@@ -352,14 +352,8 @@
     catch (e: any) { error = `Failed to open: ${e}`; }
   }
 
-  function getDocIcon(ext: string): string {
-    switch (ext.toLowerCase()) {
-      case "pdf": return "📕";
-      case "doc": case "docx": return "📘";
-      case "xls": case "xlsx": return "📗";
-      case "ppt": case "pptx": return "📙";
-      default: return "📄";
-    }
+  function getDocIcon(_ext: string): string {
+    return "";
   }
 
   function getDocLabel(ext: string): string {
