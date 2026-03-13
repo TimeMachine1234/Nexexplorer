@@ -7,6 +7,7 @@
   import ImagePreview from "./ImagePreview.svelte";
   import PdfPreview from "./PdfPreview.svelte";
   import VideoPreview from "./VideoPreview.svelte";
+  import FileIcon from "../common/FileIcon.svelte";
 
   interface FileMetadata {
     name: string;
@@ -244,13 +245,7 @@
       {:else if previewType === "document"}
         <div class="quick-doc">
           <div class="quick-doc-icon">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
-              <path d="M6 2h8l6 6v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z" fill="var(--accent)" opacity="0.15"/>
-              <path d="M6 2h8l6 6v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z" stroke="var(--accent)" stroke-width="1.5"/>
-              <path d="M14 2v6h6" stroke="var(--accent)" stroke-width="1.5"/>
-              <line x1="8" y1="13" x2="16" y2="13" stroke="var(--accent)" stroke-width="1.2"/>
-              <line x1="8" y1="16" x2="14" y2="16" stroke="var(--accent)" stroke-width="1.2"/>
-            </svg>
+            <FileIcon extension={metadata?.extension ? `.${metadata.extension}` : ""} isDir={false} size={64} />
           </div>
           <div class="quick-doc-name">{metadata?.name}</div>
           <div class="quick-doc-type">{getDocLabel(metadata?.extension ?? "")}</div>
