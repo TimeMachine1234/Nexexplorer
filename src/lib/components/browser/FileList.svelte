@@ -149,10 +149,9 @@
     border: none;
     background: none;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.2px;
     cursor: pointer;
     font-family: inherit;
     padding: 0;
@@ -166,7 +165,7 @@
 
   .col-name-h {
     flex: 1;
-    padding-left: 4px;
+    padding-left: 6px;
   }
 
   .col-size-h {

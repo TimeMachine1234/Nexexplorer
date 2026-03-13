@@ -114,7 +114,7 @@
   tabindex="0"
 >
   <div class="col-icon"><FileIcon extension={entry.extension} isDir={entry.is_dir} /></div>
-  <div class="col-name" class:is-dir={entry.is_dir}>{#if filterText}{@html highlightName(entry.name, filterText)}{:else}{entry.name}{/if}</div>
+  <div class="col-name">{#if filterText}{@html highlightName(entry.name, filterText)}{:else}{entry.name}{/if}</div>
   <div class="col-size">{formatSize(entry.size)}</div>
   <div class="col-modified">{formatDate(entry.modified)}</div>
   <div class="col-type">{getTypeName()}</div>
@@ -147,8 +147,9 @@
   .col-icon {
     width: 24px;
     flex-shrink: 0;
-    font-size: 14px;
-    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .col-name {
@@ -157,13 +158,9 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    padding-left: 4px;
+    padding-left: 6px;
     color: var(--text);
     font-size: 13px;
-  }
-
-  .col-name.is-dir {
-    color: var(--folder-yellow);
   }
 
   .col-size {

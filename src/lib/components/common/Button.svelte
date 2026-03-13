@@ -34,12 +34,12 @@
     align-items: center;
     justify-content: center;
     gap: 4px;
-    border-radius: 3px;
+    border-radius: 4px;
     font-family: inherit;
-    font-size: 11px;
+    font-size: 12px;
     cursor: pointer;
     white-space: nowrap;
-    transition: background-color 0.1s, color 0.1s, border-color 0.1s;
+    transition: background-color 0.08s, color 0.08s, border-color 0.08s;
     user-select: none;
     flex-shrink: 0;
   }
@@ -51,27 +51,26 @@
 
   /* Sizes */
   .btn--sm {
-    height: 22px;
-    padding: 0 8px;
+    height: 24px;
+    padding: 0 10px;
   }
 
   .btn--md {
-    height: 28px;
-    padding: 0 12px;
-    font-size: 12px;
-    border-radius: 4px;
+    height: 30px;
+    padding: 0 14px;
+    font-size: 12.5px;
   }
 
   /* Variants */
   .btn--default {
     border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text-muted);
+    background: var(--surface-high);
+    color: var(--text);
   }
 
   .btn--default:hover:not(:disabled) {
-    background: var(--surface-high);
-    color: var(--text);
+    background: var(--border);
+    border-color: var(--border-active);
   }
 
   .btn--primary {
@@ -86,7 +85,7 @@
 
   .btn--danger {
     border: 1px solid var(--border);
-    background: var(--surface);
+    background: var(--surface-high);
     color: var(--danger);
   }
 

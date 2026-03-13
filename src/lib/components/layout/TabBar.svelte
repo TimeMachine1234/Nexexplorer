@@ -26,8 +26,8 @@
   }
 
   function getTabIcon(tab: TabState): string {
-    if (tab.path === "~home") return "🏠";
-    return "📁";
+    if (tab.path === "~home") return "home";
+    return "folder";
   }
 
   function handleMiddleClick(e: MouseEvent, tabId: string) {
@@ -58,7 +58,18 @@
         role="tab"
         tabindex="0"
       >
-        <span class="tab-icon">{getTabIcon(tab)}</span>
+        <span class="tab-icon">
+          {#if getTabIcon(tab) === "home"}
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+              <path d="M2 8.5l6-5.5 6 5.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M3.5 9.5V13a1 1 0 001 1h2.5v-3h2v3H11.5a1 1 0 001-1V9.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          {:else}
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+              <path d="M1.5 4.5a1.5 1.5 0 011.5-1.5h3.5l1.5 1.5h5a1.5 1.5 0 011.5 1.5v6.5a1.5 1.5 0 01-1.5 1.5h-10a1.5 1.5 0 01-1.5-1.5z" stroke="currentColor" stroke-width="1.2"/>
+            </svg>
+          {/if}
+        </span>
         <span class="tab-label">{getTabLabel(tab)}</span>
         {#if tabs.length > 1}
           <button
@@ -116,9 +127,9 @@
     align-items: center;
     gap: 6px;
     height: 28px;
-    padding: 0 12px;
+    padding: 0 10px;
     border: none;
-    border-radius: 6px;
+    border-radius: 5px;
     background: transparent;
     color: var(--text-muted);
     font-size: 12.5px;
@@ -127,7 +138,7 @@
     white-space: nowrap;
     max-width: 220px;
     min-width: 80px;
-    transition: background-color 0.15s, color 0.15s;
+    transition: background-color 0.1s, color 0.1s;
     flex-shrink: 0;
     position: relative;
     margin: 0 1px;
@@ -144,9 +155,16 @@
   }
 
   .tab-icon {
-    font-size: 13px;
-    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
+    color: var(--text-dim);
+  }
+
+  .tab.active .tab-icon,
+  .tab:hover .tab-icon {
+    color: inherit;
   }
 
   .tab-label {
@@ -166,12 +184,12 @@
     background: none;
     color: var(--text-muted);
     cursor: pointer;
-    border-radius: 50%;
+    border-radius: 4px;
     flex-shrink: 0;
     font-family: inherit;
     padding: 0;
     opacity: 0;
-    transition: opacity 0.15s, background-color 0.15s, color 0.15s;
+    transition: opacity 0.1s, background-color 0.1s, color 0.1s;
   }
 
   .tab:hover .tab-close,
@@ -192,16 +210,16 @@
     justify-content: center;
     border: none;
     background: none;
-    color: var(--text-muted);
+    color: var(--text-dim);
     cursor: pointer;
-    border-radius: 50%;
+    border-radius: 5px;
     flex-shrink: 0;
     font-family: inherit;
-    transition: background-color 0.15s, color 0.15s;
+    transition: background-color 0.1s, color 0.1s;
   }
 
   .tab-new:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.08);
     color: var(--text);
   }
 

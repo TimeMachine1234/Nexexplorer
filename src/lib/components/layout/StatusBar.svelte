@@ -14,15 +14,16 @@
   .status-bar {
     display: flex;
     align-items: center;
-    height: 28px;
+    height: 24px;
     padding: 0 12px;
     background-color: var(--surface);
+    border-top: 1px solid var(--border);
     flex: 1;
     min-width: 0;
   }
 
   .item-count {
-    font-size: 12px;
-    color: var(--text-muted);
+    font-size: 11px;
+    color: var(--text-dim);
   }
 </style>

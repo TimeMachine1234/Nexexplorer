@@ -1,6 +1,7 @@
 <script lang="ts">
   import AudioPlayer from "./AudioPlayer.svelte";
   import PdfPreview from "./PdfPreview.svelte";
+  import FileIcon from "../common/FileIcon.svelte";
 
   interface TextPreview {
     content: string;
@@ -200,7 +201,9 @@
       <div class="archive-list">
         {#each archiveData.entries as entry}
           <div class="archive-item" class:is-dir={entry.is_dir}>
-            <span class="archive-icon">{entry.is_dir ? "📁" : "📄"}</span>
+            <span class="archive-icon">
+              <FileIcon extension={entry.is_dir ? "" : ("." + entry.name.split(".").pop())} isDir={entry.is_dir} size={14} />
+            </span>
             <span class="archive-name">{entry.name}</span>
             {#if !entry.is_dir}
               <span class="archive-size">{formatBytes(entry.size)}</span>
@@ -220,7 +223,9 @@
 
   {:else if previewType === "document"}
     <div class="document-container">
-      <div class="doc-icon">{getDocIcon(metadataExtension ?? "")}</div>
+      <div class="doc-icon">
+        <FileIcon extension={metadataExtension ? `.${metadataExtension}` : ""} isDir={false} size={56} />
+      </div>
       <div class="doc-name">{metadataName}</div>
       <div class="doc-type">{getDocLabel(metadataExtension ?? "")}</div>
       <button class="open-btn" onclick={onOpenWithSystem}>Open with default app</button>
@@ -475,13 +480,15 @@
     color: var(--text);
   }
 
-  .archive-item.is-dir { color: var(--folder-yellow); }
+  .archive-item.is-dir { color: var(--text); }
 
   .archive-icon {
-    font-size: 12px;
     width: 18px;
     text-align: center;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .archive-name {

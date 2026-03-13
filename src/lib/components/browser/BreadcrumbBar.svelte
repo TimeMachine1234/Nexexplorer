@@ -105,8 +105,8 @@
   .breadcrumb-bar {
     display: flex;
     align-items: center;
-    height: 32px;
-    padding: 0 6px;
+    height: 34px;
+    padding: 0 8px;
     background-color: var(--bg);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
@@ -116,24 +116,24 @@
   .path-area {
     flex: 1;
     min-width: 0;
-    height: 24px;
+    height: 26px;
     display: flex;
     align-items: center;
-    background-color: transparent;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    padding: 0 6px;
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 0 8px;
     cursor: text;
-    transition: background-color 0.1s, border-color 0.1s;
+    transition: background-color 0.1s, border-color 0.15s;
   }
 
   .path-area:hover {
-    background-color: var(--surface);
+    border-color: var(--border-active);
   }
 
   .path-area.editing {
-    background-color: var(--surface);
     border-color: var(--accent);
+    background-color: var(--surface);
   }
 
   .path-input {
@@ -142,7 +142,7 @@
     border: none;
     background: none;
     color: var(--text);
-    font-size: 12px;
+    font-size: 12.5px;
     font-family: inherit;
     outline: none;
   }
@@ -165,13 +165,13 @@
     border: none;
     background: none;
     color: var(--text-muted);
-    font-size: 12px;
-    padding: 2px 4px;
+    font-size: 12.5px;
+    padding: 2px 5px;
     border-radius: 3px;
     cursor: pointer;
     font-family: inherit;
     white-space: nowrap;
-    transition: background-color 0.1s, color 0.1s;
+    transition: background-color 0.08s, color 0.08s;
   }
 
   .segment:hover {

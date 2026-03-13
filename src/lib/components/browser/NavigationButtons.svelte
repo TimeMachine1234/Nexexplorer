@@ -45,22 +45,22 @@
 <style>
   .nav-buttons {
     display: flex;
-    gap: 2px;
+    gap: 1px;
     flex-shrink: 0;
   }
 
   .nav-btn {
-    width: 24px;
-    height: 24px;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
     border: none;
-    border-radius: 4px;
+    border-radius: 5px;
     background: none;
     color: var(--text-muted);
     cursor: pointer;
-    transition: background-color 0.1s, color 0.1s;
+    transition: background-color 0.08s, color 0.08s;
     padding: 0;
   }
 

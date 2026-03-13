@@ -75,13 +75,14 @@
 
   .context-menu {
     position: fixed;
-    min-width: 180px;
-    background: var(--surface-high);
+    min-width: 200px;
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 4px 0;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.2);
     z-index: 1001;
+    backdrop-filter: blur(12px);
   }
 
   .menu-item {
@@ -94,10 +95,13 @@
     border: none;
     background: none;
     color: var(--text);
-    font-size: 12px;
+    font-size: 12.5px;
     font-family: inherit;
     cursor: pointer;
     text-align: left;
+    border-radius: 0;
+    margin: 0 0;
+    transition: background-color 0.06s;
   }
 
   .menu-item:hover {
@@ -116,7 +120,7 @@
   .menu-shortcut {
     color: var(--text-dim);
     font-size: 11px;
-    margin-left: 16px;
+    margin-left: 24px;
   }
 
   .menu-item:hover .menu-shortcut {
@@ -126,6 +130,6 @@
   .divider {
     height: 1px;
     background: var(--border);
-    margin: 4px 0;
+    margin: 4px 8px;
   }
 </style>

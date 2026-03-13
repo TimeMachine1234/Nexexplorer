@@ -7,6 +7,7 @@
   import ImagePreview from "./ImagePreview.svelte";
   import PdfPreview from "./PdfPreview.svelte";
   import VideoPreview from "./VideoPreview.svelte";
+  import FileIcon from "../common/FileIcon.svelte";
 
   interface FileMetadata {
     name: string;
@@ -243,7 +244,9 @@
         {/key}
       {:else if previewType === "document"}
         <div class="quick-doc">
-          <div class="quick-doc-icon">{getDocIcon(metadata?.extension ?? "")}</div>
+          <div class="quick-doc-icon">
+            <FileIcon extension={metadata?.extension ? `.${metadata.extension}` : ""} isDir={false} size={64} />
+          </div>
           <div class="quick-doc-name">{metadata?.name}</div>
           <div class="quick-doc-type">{getDocLabel(metadata?.extension ?? "")}</div>
           <button class="quick-open-btn" onclick={openWithSystem}>Open with default app</button>
@@ -381,7 +384,9 @@
   }
 
   .quick-doc-icon {
-    font-size: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .quick-doc-name {
