@@ -72,7 +72,6 @@
     onOpenWithSystem: () => void;
     formatBytes: (bytes: number) => string;
     formatTime: (s: number) => string;
-    getDocIcon: (ext: string) => string;
     getDocLabel: (ext: string) => string;
   }
 
@@ -87,7 +86,7 @@
     videoEl = $bindable(), videoLoaded, videoTime, videoDuration,
     onImgWheel, onImgPointerDown, onImgPointerMove, onImgPointerUp, onImgPointerLeave, onImgClick,
     onVideoPlay, onVideoPause, onVideoEnded, onVideoTimeUpdate, onVideoLoaded, onVideoSeek, onVideoCleanup,
-    onOpenWithSystem, formatBytes, formatTime, getDocIcon, getDocLabel,
+    onOpenWithSystem, formatBytes, formatTime, getDocLabel,
   }: Props = $props();
 
   let textLines = $derived(textContent?.content.split("\n") ?? []);

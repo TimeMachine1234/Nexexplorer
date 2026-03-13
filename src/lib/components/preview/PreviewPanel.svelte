@@ -352,9 +352,6 @@
     catch (e: any) { error = `Failed to open: ${e}`; }
   }
 
-  function getDocIcon(_ext: string): string {
-    return "";
-  }
 
   function getDocLabel(ext: string): string {
     switch (ext.toLowerCase()) {
@@ -462,7 +459,7 @@
     {onVideoSeek}
     onVideoCleanup={videoCleanup}
     onOpenWithSystem={openWithSystem}
-    {formatBytes} {formatTime} {getDocIcon} {getDocLabel}
+    {formatBytes} {formatTime} {getDocLabel}
   />
 
   {#if metadata}
