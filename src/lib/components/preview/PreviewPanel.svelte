@@ -352,15 +352,6 @@
     catch (e: any) { error = `Failed to open: ${e}`; }
   }
 
-  function getDocIcon(ext: string): string {
-    switch (ext.toLowerCase()) {
-      case "pdf": return "📕";
-      case "doc": case "docx": return "📘";
-      case "xls": case "xlsx": return "📗";
-      case "ppt": case "pptx": return "📙";
-      default: return "📄";
-    }
-  }
 
   function getDocLabel(ext: string): string {
     switch (ext.toLowerCase()) {
@@ -468,7 +459,7 @@
     {onVideoSeek}
     onVideoCleanup={videoCleanup}
     onOpenWithSystem={openWithSystem}
-    {formatBytes} {formatTime} {getDocIcon} {getDocLabel}
+    {formatBytes} {formatTime} {getDocLabel}
   />
 
   {#if metadata}

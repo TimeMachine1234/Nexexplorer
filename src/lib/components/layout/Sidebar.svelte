@@ -35,8 +35,22 @@
     window.addEventListener("mouseup", onUp);
   }
 
+  // SVG icon paths (16x16 viewBox)
+  const svgIcons: Record<string, string> = {
+    home:      "M8 1L1 7h2v7h4v-4h2v4h4V7h2L8 1z",
+    desktop:   "M2 3h12a1 1 0 011 1v7a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1zm3 11h6M8 12v2",
+    documents: "M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1zm5 0v4h4",
+    downloads: "M8 1v9m-3-3l3 3 3-3M3 13h10a1 1 0 011 1v0a1 1 0 01-1 1H3a1 1 0 01-1-1v0a1 1 0 011-1z",
+    pictures:  "M2 3h12a1 1 0 011 1v8a1 1 0 01-1 1H2a1 1 0 01-1-1V4a1 1 0 011-1zm3.5 3a1 1 0 100-2 1 1 0 000 2zM15 11l-4-4-3 3-2-2-5 5",
+    videos:    "M2 4h9a1 1 0 011 1v6a1 1 0 01-1 1H2a1 1 0 01-1-1V5a1 1 0 011-1zm10 2l3-1.5v5L12 8",
+    music:     "M6 14V5l8-2v9M6 14a2 2 0 11-4 0 2 2 0 014 0zm8-2a2 2 0 11-4 0 2 2 0 014 0z",
+    pin:       "M9.828 4.172L6.586 7.414 3 7l-.707-.707 5.657-5.657L8.657 1l-.414 3.586 3.242-3.243a1 1 0 011.414 0l.344.344a1 1 0 010 1.414L10 6.344M6.586 7.414l-4.243 4.243M8 14h6",
+    drive:     "M3 5h10a1 1 0 011 1v3a1 1 0 01-1 1H3a1 1 0 01-1-1V6a1 1 0 011-1zm8 2.5a.5.5 0 100-1 .5.5 0 000 1zM3 11h10a1 1 0 011 1v1a1 1 0 01-1 1H3a1 1 0 01-1-1v-1a1 1 0 011-1z",
+    folder:    "M2 4h4l2 2h6a1 1 0 011 1v6a1 1 0 01-1 1H2a1 1 0 01-1-1V5a1 1 0 011-1z",
+  };
+
   // --- Home folders ---
-  interface NavItem { name: string; path: string; icon: string; }
+  interface NavItem { name: string; path: string; iconKey: string; }
   let homeFolders = $state<NavItem[]>([]);
 
   // Load home dir paths (resolves in milliseconds)
@@ -45,21 +59,21 @@
       const home = await tauriHomeDir();
       const base = home.endsWith("\\") || home.endsWith("/") ? home : home + "\\";
       homeFolders = [
-        { name: "Desktop", path: `${base}Desktop`, icon: "🖥️" },
-        { name: "Documents", path: `${base}Documents`, icon: "📄" },
-        { name: "Downloads", path: `${base}Downloads`, icon: "⬇️" },
-        { name: "Pictures", path: `${base}Pictures`, icon: "🖼️" },
-        { name: "Videos", path: `${base}Videos`, icon: "🎬" },
-        { name: "Music", path: `${base}Music`, icon: "🎵" },
+        { name: "Desktop", path: `${base}Desktop`, iconKey: "desktop" },
+        { name: "Documents", path: `${base}Documents`, iconKey: "documents" },
+        { name: "Downloads", path: `${base}Downloads`, iconKey: "downloads" },
+        { name: "Pictures", path: `${base}Pictures`, iconKey: "pictures" },
+        { name: "Videos", path: `${base}Videos`, iconKey: "videos" },
+        { name: "Music", path: `${base}Music`, iconKey: "music" },
       ];
     } catch {
       homeFolders = [
-        { name: "Desktop", path: "C:\\Users\\user\\Desktop", icon: "🖥️" },
-        { name: "Documents", path: "C:\\Users\\user\\Documents", icon: "📄" },
-        { name: "Downloads", path: "C:\\Users\\user\\Downloads", icon: "⬇️" },
-        { name: "Pictures", path: "C:\\Users\\user\\Pictures", icon: "🖼️" },
-        { name: "Videos", path: "C:\\Users\\user\\Videos", icon: "🎬" },
-        { name: "Music", path: "C:\\Users\\user\\Music", icon: "🎵" },
+        { name: "Desktop", path: "C:\\Users\\user\\Desktop", iconKey: "desktop" },
+        { name: "Documents", path: "C:\\Users\\user\\Documents", iconKey: "documents" },
+        { name: "Downloads", path: "C:\\Users\\user\\Downloads", iconKey: "downloads" },
+        { name: "Pictures", path: "C:\\Users\\user\\Pictures", iconKey: "pictures" },
+        { name: "Videos", path: "C:\\Users\\user\\Videos", iconKey: "videos" },
+        { name: "Music", path: "C:\\Users\\user\\Music", iconKey: "music" },
       ];
     }
   }
@@ -102,12 +116,12 @@
   <SidebarSection title="Home">
     {#snippet children()}
       <button class="nav-item" class:active={isActive(HOME_PATH)} onclick={() => onNavigate(HOME_PATH)}>
-        <span class="icon">🏠</span>
+        <span class="icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d={svgIcons.home}/></svg></span>
         <span class="label">Home</span>
       </button>
       {#each homeFolders as item}
         <button class="nav-item" class:active={isActive(item.path)} onclick={() => onNavigate(item.path)}>
-          <span class="icon">{item.icon}</span>
+          <span class="icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d={svgIcons[item.iconKey]}/></svg></span>
           <span class="label">{item.name}</span>
         </button>
       {/each}
@@ -127,7 +141,7 @@
         {#each $pinnedFolders as pin}
           <div class="pin-row" class:active={isActive(pin.path)}>
             <button class="nav-item pin-nav" onclick={() => onNavigate(pin.path)}>
-              <span class="icon">📌</span>
+              <span class="icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d={svgIcons.pin}/></svg></span>
               <span class="label">{pin.name}</span>
             </button>
             <button class="unpin-btn" onclick={() => pinnedFolders.unpin(pin.path)} title="Unpin">×</button>
@@ -141,7 +155,7 @@
     {#snippet children()}
       {#each drives as drive}
         <button class="nav-item drive-item" onclick={() => onNavigate(`${drive.letter}:\\`)}>
-          <span class="icon">💾</span>
+          <span class="icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d={svgIcons.drive}/></svg></span>
           <div class="drive-info">
             <span class="label">{drive.letter}: {drive.label}</span>
             {#if drive.total_space > 0}
@@ -198,20 +212,20 @@
   .nav-item {
     display: flex;
     align-items: center;
-    gap: 7px;
-    padding: 0 10px 0 12px;
-    height: 28px;
+    gap: 6px;
+    padding: 0 8px 0 10px;
+    height: 26px;
     border: none;
     background: none;
     color: var(--text-secondary);
-    font-size: 13px;
+    font-size: 12.5px;
     cursor: pointer;
     text-align: left;
     font-family: inherit;
-    transition: background-color 120ms ease, color 120ms ease;
-    border-radius: var(--radius-sm);
-    margin: 0 6px;
-    width: calc(100% - 12px);
+    transition: background-color 80ms ease, color 80ms ease;
+    border-radius: var(--radius-xs);
+    margin: 0 4px;
+    width: calc(100% - 8px);
     box-sizing: border-box;
     position: relative;
   }
@@ -238,10 +252,17 @@
   }
 
   .icon {
-    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
     width: 16px;
-    text-align: center;
+    height: 16px;
+    color: var(--text-muted);
+  }
+
+  .nav-item.active .icon {
+    color: var(--accent);
   }
 
   .label {
@@ -249,7 +270,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 13px;
+    font-size: 12.5px;
   }
 
   /* Pinned */
@@ -257,8 +278,8 @@
     display: flex;
     align-items: center;
     position: relative;
-    margin: 0 6px;
-    border-radius: var(--radius-sm);
+    margin: 0 4px;
+    border-radius: var(--radius-xs);
   }
 
   .pin-row.active .pin-nav {
@@ -365,9 +386,9 @@
 
   .drive-bar-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+    background: var(--accent);
     border-radius: 2px;
-    transition: width 0.4s ease;
+    transition: width 0.3s ease;
   }
 
   .drive-meta {

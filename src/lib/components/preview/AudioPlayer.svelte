@@ -111,7 +111,11 @@
     onended={onEnded}
   ></audio>
 
-  <div class="ap-icon">🎵</div>
+  <div class="ap-icon">
+    <svg width="48" height="48" viewBox="0 0 16 16" fill="none" stroke="var(--accent)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 14V5l8-2v9M6 14a2 2 0 11-4 0 2 2 0 014 0zm8-2a2 2 0 11-4 0 2 2 0 014 0z"/>
+    </svg>
+  </div>
   <div class="ap-name">{fileName}</div>
 
   <div class="ap-controls">
@@ -216,7 +220,9 @@
   }
 
   .ap-icon {
-    font-size: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     line-height: 1;
   }
 

@@ -79,7 +79,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    padding: 16px 20px;
+    padding: 12px 16px;
     background: var(--bg);
   }
 
@@ -92,24 +92,24 @@
   }
 
   .home-title {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--text);
     margin: 0;
   }
 
   .settings-btn {
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: transparent;
     border: 1px solid transparent;
-    border-radius: 6px;
+    border-radius: var(--radius-xs);
     color: var(--text-muted);
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.1s, color 0.1s;
   }
 
   .settings-btn:hover {
@@ -121,10 +121,10 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 8px 10px;
-    margin-bottom: 8px;
+    padding: 6px 10px;
+    margin-bottom: 6px;
     background: var(--surface);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--border);
     flex-shrink: 0;
   }
@@ -153,7 +153,7 @@
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
     min-height: 0;
   }
 
@@ -169,11 +169,11 @@
   }
 
   .section-title {
-    font-size: 13px;
+    font-size: 11px;
     font-weight: 600;
     color: var(--text-muted);
-    margin: 0 0 4px;
+    margin: 0 0 2px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.05em;
   }
 </style>

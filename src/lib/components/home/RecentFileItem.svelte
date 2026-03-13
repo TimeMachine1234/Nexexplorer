@@ -59,9 +59,8 @@
     {#if icon}
       {@render icon()}
     {:else}
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-        <polyline points="14,2 14,8 20,8" />
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1zm5 0v4h4" />
       </svg>
     {/if}
   </span>
@@ -79,10 +78,10 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    height: 36px;
-    padding: 0 10px;
+    height: 32px;
+    padding: 0 8px;
     border: none;
-    border-radius: var(--sq-sm);
+    border-radius: var(--radius-xs);
     background: none;
     color: var(--text-secondary);
     font-family: inherit;
@@ -93,7 +92,7 @@
   }
 
   .recent-file-item:hover {
-    background: var(--surface-raised);
+    background: var(--surface-high);
     color: var(--text);
   }
 
@@ -103,7 +102,7 @@
     justify-content: center;
     width: 16px;
     height: 16px;
-    color: var(--accent);
+    color: var(--text-muted);
     flex-shrink: 0;
   }
 

@@ -38,16 +38,16 @@
     {#if icon}
       {@render icon()}
     {:else}
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" />
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 4h4l2 2h6a1 1 0 011 1v6a1 1 0 01-1 1H2a1 1 0 01-1-1V5a1 1 0 011-1z" />
       </svg>
     {/if}
   </span>
   <span class="qa-label">{label}</span>
   {#if pinned}
     <span class="qa-pin" title="Pinned">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-        <path d="M16 2v7l2 2v2h-5v7l-1 2-1-2v-7H6v-2l2-2V2h8z" />
+      <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9.828 4.172L6.586 7.414 3 7l-.707-.707 5.657-5.657L8.657 1l-.414 3.586 3.242-3.243a1 1 0 011.414 0l.344.344a1 1 0 010 1.414L10 6.344M6.586 7.414l-4.243 4.243M8 14h6" />
       </svg>
     </span>
   {/if}
@@ -58,9 +58,9 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    height: 32px;
+    height: 30px;
     padding: 0 10px;
-    border-radius: var(--sq-lg);
+    border-radius: var(--radius-xs);
     border: 1px solid transparent;
     background: var(--surface);
     color: var(--text-secondary);
@@ -71,28 +71,26 @@
     position: relative;
     transition:
       background var(--transition-fast),
-      border-color var(--transition-fast),
       color var(--transition-fast);
     overflow: hidden;
   }
 
   .quick-access-item:hover {
-    background: var(--surface-raised);
-    border-color: var(--border);
+    background: var(--surface-high);
     color: var(--text);
   }
 
   .quick-access-item:active {
-    background: var(--surface-high);
+    background: var(--surface-raised);
   }
 
   .qa-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
-    color: var(--folder-yellow);
+    width: 18px;
+    height: 18px;
+    color: var(--text-muted);
     flex-shrink: 0;
   }
 
@@ -113,7 +111,6 @@
 
   .quick-access-item[data-theme="glass"],
   :global([data-theme="glass"]) .quick-access-item {
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    background: var(--surface);
   }
 </style>

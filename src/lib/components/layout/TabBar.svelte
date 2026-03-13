@@ -26,9 +26,14 @@
   }
 
   function getTabIcon(tab: TabState): string {
-    if (tab.path === "~home") return "🏠";
-    return "📁";
+    if (tab.path === "~home") return "home";
+    return "folder";
   }
+
+  const tabIconPaths: Record<string, string> = {
+    home:   "M8 1L1 7h2v7h4v-4h2v4h4V7h2L8 1z",
+    folder: "M2 4h4l2 2h6a1 1 0 011 1v6a1 1 0 01-1 1H2a1 1 0 01-1-1V5a1 1 0 011-1z",
+  };
 
   function handleMiddleClick(e: MouseEvent, tabId: string) {
     if (e.button === 1) { e.preventDefault(); onCloseTab(tabId); }
@@ -58,7 +63,11 @@
         role="tab"
         tabindex="0"
       >
-        <span class="tab-icon">{getTabIcon(tab)}</span>
+        <span class="tab-icon">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d={tabIconPaths[getTabIcon(tab)]}/>
+          </svg>
+        </span>
         <span class="tab-label">{getTabLabel(tab)}</span>
         {#if tabs.length > 1}
           <button
@@ -159,12 +168,14 @@
   }
 
   .tab-icon {
-    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     line-height: 1;
     flex-shrink: 0;
-    opacity: 0.7;
+    color: var(--text-muted);
   }
-  .tab.active .tab-icon { opacity: 1; }
+  .tab.active .tab-icon { color: var(--text-secondary); }
 
   .tab-label {
     overflow: hidden;
