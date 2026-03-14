@@ -90,11 +90,11 @@
     align-items: center;
     gap: 4px;
     padding: 8px 6px;
-    border-radius: var(--radius-sm);
+    border-radius: var(--sq-sm);
     border: 1px solid transparent;
     background: transparent;
     cursor: pointer;
-    transition: background 0.1s;
+    transition: background var(--transition-fast);
     color: var(--text);
   }
 
@@ -108,7 +108,7 @@
     justify-content: center;
     width: 32px;
     height: 32px;
-    border-radius: var(--radius-sm);
+    border-radius: var(--sq-sm);
     background: var(--surface-high);
     color: var(--text-secondary);
   }

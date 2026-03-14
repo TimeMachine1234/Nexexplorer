@@ -68,13 +68,13 @@
   .storage-bar-track {
     height: 3px;
     background: var(--surface-raised);
-    border-radius: 2px;
+    border-radius: var(--sq-xs);
     overflow: hidden;
   }
 
   .storage-bar-fill {
     height: 100%;
-    border-radius: 2px;
+    border-radius: var(--sq-xs);
     transition: width var(--transition-slow);
   }
 

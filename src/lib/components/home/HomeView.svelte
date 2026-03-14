@@ -106,10 +106,10 @@
     justify-content: center;
     background: transparent;
     border: 1px solid transparent;
-    border-radius: var(--radius-xs);
+    border-radius: var(--sq-xs);
     color: var(--text-muted);
     cursor: pointer;
-    transition: background 0.1s, color 0.1s;
+    transition: background var(--transition-fast), color var(--transition-fast);
   }
 
   .settings-btn:hover {
@@ -124,7 +124,7 @@
     padding: 6px 10px;
     margin-bottom: 6px;
     background: var(--surface);
-    border-radius: var(--radius-sm);
+    border-radius: var(--sq-sm);
     border: 1px solid var(--border);
     flex-shrink: 0;
   }

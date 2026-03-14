@@ -118,7 +118,7 @@
     background: none;
     color: var(--text-muted);
     cursor: pointer;
-    border-radius: var(--radius-xs);
+    border-radius: var(--sq-xs);
     font-family: inherit;
     flex-shrink: 0;
     transition: background-color var(--transition-fast), color var(--transition-fast);

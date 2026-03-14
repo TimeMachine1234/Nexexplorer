@@ -143,7 +143,7 @@
     font-size: 11px;
     font-family: inherit;
     cursor: pointer;
-    border-radius: 3px;
+    border-radius: var(--sq-xs);
   }
 
   .panel-btn:hover {
@@ -168,7 +168,7 @@
 
   .transfer-item {
     padding: 6px 8px;
-    border-radius: 4px;
+    border-radius: var(--sq-xs);
     margin-bottom: 2px;
     background: var(--bg);
   }
@@ -209,7 +209,7 @@
   .progress-bar {
     height: 4px;
     background: var(--border);
-    border-radius: 2px;
+    border-radius: var(--sq-xs);
     overflow: hidden;
     margin-bottom: 4px;
   }
@@ -217,7 +217,7 @@
   .progress-fill {
     height: 100%;
     background: var(--accent);
-    border-radius: 2px;
+    border-radius: var(--sq-xs);
     transition: width 0.3s;
   }
 
@@ -238,7 +238,7 @@
     height: 20px;
     padding: 0 8px;
     border: 1px solid var(--border);
-    border-radius: 3px;
+    border-radius: var(--sq-xs);
     background: var(--surface);
     color: var(--text-muted);
     font-size: 10px;

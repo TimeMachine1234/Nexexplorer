@@ -64,7 +64,7 @@
     cursor: pointer;
     font-family: inherit;
     text-align: left;
-    transition: color 120ms ease;
+    transition: color var(--transition) ease;
     width: 100%;
   }
 
@@ -80,7 +80,7 @@
 
   .chevron-svg {
     display: block;
-    transition: transform 150ms ease;
+    transition: transform var(--transition) ease;
     transform: rotate(0deg);
   }
 
@@ -92,7 +92,7 @@
     display: flex;
     gap: 2px;
     opacity: 0;
-    transition: opacity 120ms ease;
+    transition: opacity var(--transition) ease;
     padding-right: 2px;
   }
 

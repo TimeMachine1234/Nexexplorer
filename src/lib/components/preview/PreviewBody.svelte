@@ -458,7 +458,7 @@
     right: 12px;
     bottom: 12px;
     border: 1px solid color-mix(in srgb, var(--border-strong) 90%, transparent);
-    border-radius: 8px;
+    border-radius: var(--sq-md);
     background: color-mix(in srgb, var(--surface-float) 86%, transparent);
     overflow: hidden;
     pointer-events: none;
@@ -480,7 +480,7 @@
     border: 1px solid var(--accent);
     background: color-mix(in srgb, var(--accent) 18%, transparent);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-hover) 60%, transparent);
-    border-radius: 4px;
+    border-radius: var(--sq-xs);
   }
 
   /* === Video === */
@@ -516,7 +516,7 @@
     right: 4px;
     height: 3px;
     background: rgba(255,255,255,0.1);
-    border-radius: 2px;
+    border-radius: var(--sq-xs);
     overflow: hidden;
     pointer-events: none;
   }
@@ -524,7 +524,7 @@
   .seek-fill {
     height: 100%;
     background: var(--accent);
-    border-radius: 2px;
+    border-radius: var(--sq-xs);
   }
 
   .seek-input {
@@ -706,13 +706,13 @@
     height: 30px;
     padding: 0 16px;
     border: 1px solid var(--accent);
-    border-radius: 5px;
+    border-radius: var(--sq-sm);
     background: var(--accent);
     color: white;
     font-size: 12px;
     font-family: inherit;
     cursor: pointer;
-    transition: opacity 0.1s;
+    transition: opacity var(--transition-fast);
   }
 
   .open-btn:hover { opacity: 0.85; }

@@ -7,10 +7,11 @@
 
   interface Props {
     onNavigate: (path: string) => void;
+    onOpenSettings?: () => void;
     currentPath?: string;
   }
 
-  let { onNavigate, currentPath = "" }: Props = $props();
+  let { onNavigate, onOpenSettings, currentPath = "" }: Props = $props();
 
   // --- Resizable sidebar ---
   let sidebarWidth = $state(200);
@@ -185,7 +186,7 @@
 
   {#if !isCollapsed}
     <div class="sidebar-footer">
-      <button class="sidebar-toggle sidebar-menu-btn" type="button" title="Sidebar menu" aria-label="Sidebar menu">
+      <button class="sidebar-toggle sidebar-menu-btn" type="button" onclick={onOpenSettings} title="Settings" aria-label="Open settings">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
           <path d="M3 4h10" />
           <path d="M3 8h10" />
@@ -226,7 +227,7 @@
     position: relative;
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
-    transition: width 0.18s ease, padding 0.18s ease;
+    transition: width var(--transition-slow) ease, padding var(--transition-slow) ease;
   }
 
   .sidebar.collapsed {
@@ -251,7 +252,7 @@
     height: 100%;
     cursor: col-resize;
     z-index: 10;
-    transition: background 0.15s;
+    transition: background var(--transition);
   }
 
   .resize-handle:hover,
@@ -277,11 +278,11 @@
     align-items: center;
     justify-content: center;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--sq-md);
     background: color-mix(in srgb, var(--surface-high) 85%, transparent);
     color: var(--text-secondary);
     cursor: pointer;
-    transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+    transition: background-color var(--transition) ease, color var(--transition) ease, border-color var(--transition) ease;
     padding: 0;
     z-index: 20;
   }
@@ -299,11 +300,11 @@
     align-items: center;
     justify-content: center;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--sq-md);
     background: color-mix(in srgb, var(--surface-high) 85%, transparent);
     color: var(--text-secondary);
     cursor: pointer;
-    transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+    transition: background-color var(--transition) ease, color var(--transition) ease, border-color var(--transition) ease;
     padding: 0;
     flex-shrink: 0;
   }
@@ -335,8 +336,8 @@
     cursor: pointer;
     text-align: left;
     font-family: inherit;
-    transition: background-color 80ms ease, color 80ms ease;
-    border-radius: var(--radius-xs);
+    transition: background-color var(--transition-fast) ease, color var(--transition-fast) ease;
+    border-radius: var(--sq-xs);
     margin: 0 4px;
     width: calc(100% - 8px);
     box-sizing: border-box;
@@ -361,7 +362,7 @@
     bottom: 20%;
     width: 2px;
     background: var(--accent-border);
-    border-radius: 2px;
+    border-radius: var(--sq-xs);
   }
 
   .icon {
@@ -392,7 +393,7 @@
     align-items: center;
     position: relative;
     margin: 0 4px;
-    border-radius: var(--radius-xs);
+    border-radius: var(--sq-xs);
   }
 
   .pin-row.active .pin-nav {
@@ -408,7 +409,7 @@
     bottom: 20%;
     width: 2px;
     background: var(--accent-border);
-    border-radius: 2px;
+    border-radius: var(--sq-xs);
   }
 
   .pin-nav {
@@ -431,9 +432,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--radius-xs);
+    border-radius: var(--sq-xs);
     opacity: 0;
-    transition: opacity 0.1s, color 0.1s;
+    transition: opacity var(--transition-fast), color var(--transition-fast);
     padding: 0;
     line-height: 1;
     flex-shrink: 0;
@@ -460,9 +461,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--radius-xs);
+    border-radius: var(--sq-xs);
     padding: 0;
-    transition: color 0.1s, background-color 0.1s;
+    transition: color var(--transition-fast), background-color var(--transition-fast);
     line-height: 1;
     font-family: inherit;
   }
@@ -493,14 +494,14 @@
     flex: 1;
     height: 2px;
     background-color: var(--border-subtle);
-    border-radius: 2px;
+    border-radius: var(--sq-xs);
     overflow: hidden;
   }
 
   .drive-bar-fill {
     height: 100%;
     background: var(--accent);
-    border-radius: 2px;
+    border-radius: var(--sq-xs);
     transition: width 0.3s ease;
   }
 

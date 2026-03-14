@@ -405,8 +405,8 @@
     background: none;
     color: var(--text-muted);
     cursor: pointer;
-    border-radius: 4px;
-    transition: background-color 0.1s, color 0.1s;
+    border-radius: var(--sq-xs);
+    transition: background-color var(--transition-fast), color var(--transition-fast);
     padding: 0;
   }
   .tb-btn:hover         { background-color: var(--surface-high); color: var(--text); }
@@ -456,7 +456,7 @@
     width: 4px;
     height: 177px;
     background: var(--border-active);
-    border-radius: 9999px;
+    border-radius: var(--sq-full);
     pointer-events: none;
     /* Must be above rows (z-index:1) so hover background doesn't cover the track */
     z-index: 3;
@@ -473,7 +473,7 @@
     left: 8px;
     width: 14px;
     height: 14px;
-    border-radius: 9999px;
+    border-radius: var(--sq-full);
     /* Two-tone: accent outer ring, dark inner */
     background: var(--bg);
     border: 3px solid var(--accent);
@@ -497,7 +497,7 @@
     /* 28px left keeps content clear of track (track right-edge = 17px) */
     padding: 0 14px 0 30px;
     cursor: pointer;
-    transition: background 90ms ease;
+    transition: background var(--transition-fast) ease;
     z-index: 1;
   }
   .picker-row:hover    { background: var(--surface-raised); }
@@ -576,7 +576,7 @@
     border-radius: var(--sq-sm);
     padding: 0 6px 0 6px;
     height: 26px;
-    transition: border-color 0.1s;
+    transition: border-color var(--transition-fast);
   }
   .picker-input-wrap:focus-within {
     border-color: var(--border-focus);

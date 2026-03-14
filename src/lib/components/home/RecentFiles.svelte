@@ -176,7 +176,7 @@
     border: none;
     border-bottom: 2px solid transparent;
     cursor: pointer;
-    transition: color 0.15s, border-color 0.15s;
+    transition: color var(--transition), border-color var(--transition);
   }
 
   .tab-btn:hover { color: var(--text); }
@@ -213,8 +213,8 @@
     cursor: pointer;
     color: var(--text);
     font-size: 12px;
-    border-radius: 4px;
-    transition: background 0.1s;
+    border-radius: var(--sq-xs);
+    transition: background var(--transition-fast);
   }
 
   .recent-row:hover {

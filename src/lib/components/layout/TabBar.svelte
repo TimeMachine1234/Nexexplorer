@@ -238,7 +238,7 @@
     height: 16px;
     margin: 0 4px;
     background: color-mix(in srgb, var(--text-muted) 28%, transparent);
-    border-radius: 999px;
+    border-radius: var(--sq-full);
     flex-shrink: 0;
   }
 
@@ -261,8 +261,8 @@
     min-width: 136px;
     flex: 0 0 auto;
     box-sizing: border-box;
-    border-radius: 9px;
-    transition: background-color 180ms cubic-bezier(0.22, 1, 0.36, 1), color 180ms cubic-bezier(0.22, 1, 0.36, 1), border-color 180ms cubic-bezier(0.22, 1, 0.36, 1), transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    border-radius: var(--sq-md);
+    transition: background-color var(--transition-slow) cubic-bezier(0.22, 1, 0.36, 1), color var(--transition-slow) cubic-bezier(0.22, 1, 0.36, 1), border-color var(--transition-slow) cubic-bezier(0.22, 1, 0.36, 1), transform var(--transition-slow) cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   /* Bottom accent line on active tab */
@@ -273,7 +273,7 @@
     left: 10px;
     right: 10px;
     height: 2px;
-    border-radius: 999px;
+    border-radius: var(--sq-full);
     background: var(--accent);
     transform: scaleX(0);
     transform-origin: center;
@@ -326,12 +326,12 @@
     background: none;
     color: var(--text-muted);
     cursor: pointer;
-    border-radius: var(--radius-xs);
+    border-radius: var(--sq-xs);
     flex-shrink: 0;
     font-family: inherit;
     padding: 0;
     opacity: 0;
-    transition: opacity 90ms ease, background-color 90ms ease, color 90ms ease;
+    transition: opacity var(--transition-fast) ease, background-color var(--transition-fast) ease, color var(--transition-fast) ease;
   }
   .tab:hover .tab-close,
   .tab.active .tab-close { opacity: 1; }
@@ -359,8 +359,8 @@
     color: var(--text-muted);
     cursor: pointer;
     font-family: inherit;
-    border-radius: 9px;
-    transition: background-color 180ms cubic-bezier(0.22, 1, 0.36, 1), color 180ms cubic-bezier(0.22, 1, 0.36, 1), border-color 180ms cubic-bezier(0.22, 1, 0.36, 1), transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    border-radius: var(--sq-md);
+    transition: background-color var(--transition-slow) cubic-bezier(0.22, 1, 0.36, 1), color var(--transition-slow) cubic-bezier(0.22, 1, 0.36, 1), border-color var(--transition-slow) cubic-bezier(0.22, 1, 0.36, 1), transform var(--transition-slow) cubic-bezier(0.22, 1, 0.36, 1);
   }
   .tab-new:hover {
     background: var(--surface-high);
@@ -382,8 +382,8 @@
     color: var(--text-muted);
     cursor: pointer;
     font-family: inherit;
-    border-radius: 8px;
-    transition: background-color 180ms cubic-bezier(0.22, 1, 0.36, 1), color 180ms cubic-bezier(0.22, 1, 0.36, 1), border-color 180ms cubic-bezier(0.22, 1, 0.36, 1), transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+    border-radius: var(--sq-md);
+    transition: background-color var(--transition-slow) cubic-bezier(0.22, 1, 0.36, 1), color var(--transition-slow) cubic-bezier(0.22, 1, 0.36, 1), border-color var(--transition-slow) cubic-bezier(0.22, 1, 0.36, 1), transform var(--transition-slow) cubic-bezier(0.22, 1, 0.36, 1);
   }
   .scroll-arrow:hover {
     background: var(--surface-high);

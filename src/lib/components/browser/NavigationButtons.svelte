@@ -56,7 +56,7 @@
     align-items: center;
     justify-content: center;
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: var(--sq-sm);
     background: none;
     color: var(--text-muted);
     cursor: pointer;

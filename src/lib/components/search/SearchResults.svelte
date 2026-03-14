@@ -193,7 +193,7 @@
 
   .search-results::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.08);
-    border-radius: 2px;
+    border-radius: var(--sq-xs);
   }
 
   .result-item {
@@ -201,7 +201,7 @@
     align-items: center;
     gap: 12px;
     padding: 10px 12px;
-    border-radius: 8px;
+    border-radius: var(--sq-md);
     cursor: pointer;
     transition: background 0.07s;
     min-height: 42px;
@@ -267,7 +267,7 @@
     color: rgba(255, 255, 255, 0.25);
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 5px;
+    border-radius: var(--sq-sm);
     padding: 1px 6px;
     font-variant-numeric: tabular-nums;
   }
@@ -328,13 +328,13 @@
     height: 30px;
     padding: 0 16px;
     border: 1px solid rgba(0, 180, 216, 0.5);
-    border-radius: 7px;
+    border-radius: var(--sq-md);
     background: rgba(0, 180, 216, 0.12);
     color: var(--accent);
     font-size: 12px;
     font-family: inherit;
     cursor: pointer;
-    transition: all 0.12s;
+    transition: all var(--transition);
   }
 
   .index-btn:hover {

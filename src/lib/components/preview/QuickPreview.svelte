@@ -300,7 +300,7 @@
     max-height: 80vh;
     background: var(--surface-high);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: var(--sq-md);
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
     display: flex;
     flex-direction: column;
@@ -418,13 +418,13 @@
     height: 32px;
     padding: 0 20px;
     border: 1px solid var(--accent);
-    border-radius: 5px;
+    border-radius: var(--sq-sm);
     background: var(--accent);
     color: white;
     font-size: 13px;
     font-family: inherit;
     cursor: pointer;
-    transition: opacity 0.1s;
+    transition: opacity var(--transition-fast);
   }
 
   .quick-open-btn:hover {

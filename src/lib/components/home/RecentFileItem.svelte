@@ -81,7 +81,7 @@
     height: 32px;
     padding: 0 8px;
     border: none;
-    border-radius: var(--radius-xs);
+    border-radius: var(--sq-xs);
     background: none;
     color: var(--text-secondary);
     font-family: inherit;

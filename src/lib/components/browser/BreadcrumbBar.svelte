@@ -126,7 +126,7 @@
     align-items: center;
     background-color: transparent;
     border: 1px solid transparent;
-    border-radius: var(--radius-sm);
+    border-radius: var(--sq-sm);
     padding: 0 6px;
     cursor: text;
     transition: background-color var(--transition-fast), border-color var(--transition-fast);
@@ -174,7 +174,7 @@
     color: var(--text-muted);
     font-size: 12px;
     padding: 2px 5px;
-    border-radius: var(--radius-xs);
+    border-radius: var(--sq-xs);
     cursor: pointer;
     font-family: inherit;
     white-space: nowrap;

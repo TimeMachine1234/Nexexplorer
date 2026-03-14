@@ -190,13 +190,13 @@
     background: none;
     color: var(--text-muted);
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: var(--sq-xs);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 11px;
     font-family: inherit;
-    transition: background 0.1s, color 0.1s;
+    transition: background var(--transition-fast), color var(--transition-fast);
   }
 
   .tb-btn:hover {
@@ -225,7 +225,7 @@
     font-variant-numeric: tabular-nums;
     padding: 2px 4px;
     cursor: pointer;
-    border-radius: 3px;
+    border-radius: var(--sq-xs);
     min-width: 38px;
     text-align: center;
   }
@@ -239,7 +239,7 @@
     width: 42px;
     height: 20px;
     border: 1px solid var(--accent);
-    border-radius: 3px;
+    border-radius: var(--sq-xs);
     background: var(--bg);
     color: var(--text);
     font-size: 10px;
@@ -268,7 +268,7 @@
   .color-swatch {
     width: 14px;
     height: 14px;
-    border-radius: 3px;
+    border-radius: var(--sq-xs);
     border: 1px solid var(--border-active);
     flex-shrink: 0;
   }

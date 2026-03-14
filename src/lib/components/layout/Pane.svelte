@@ -521,6 +521,7 @@
         />
       {/snippet}
     </TabBar>
+    {#if $settings.showBreadcrumbs}
     <BreadcrumbBar
       bind:this={breadcrumbBar}
       currentPath={isHome ? "" : tabData.path}
@@ -532,6 +533,7 @@
       onPathSubmit={(p) => navigateTo(p)}
       onGoUp={handleGoUp}
     />
+    {/if}
     {#if isHome}
       <HomeView
         onNavigate={(p) => navigateTo(p)}
@@ -637,11 +639,13 @@
     flex-direction: column;
     min-width: 0;
     border: 2px solid transparent;
-    transition: border-color 0.1s;
+    transition: border-color var(--transition-fast), opacity var(--transition-fast);
+    opacity: var(--inactive-pane-opacity, 1);
   }
 
   .pane.active {
     border-color: var(--accent);
+    opacity: 1;
   }
 
   .bottom-bar {

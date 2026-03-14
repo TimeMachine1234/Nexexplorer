@@ -201,7 +201,7 @@
     height: 22px;
     background: var(--surface-high);
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--sq-xs);
     padding: 0 6px;
     gap: 4px;
     width: 180px;
@@ -261,7 +261,7 @@
     color: var(--text-dim);
     font-size: 9px;
     cursor: pointer;
-    border-radius: 2px;
+    border-radius: var(--sq-xs);
     font-family: inherit;
     padding: 0;
   }
@@ -278,14 +278,14 @@
     align-items: center;
     justify-content: center;
     border: 1px solid var(--border);
-    border-radius: 4px;
+    border-radius: var(--sq-xs);
     background: var(--surface-high);
     color: var(--text-dim);
     cursor: pointer;
     font-family: inherit;
     flex-shrink: 0;
     padding: 0;
-    transition: background-color 0.1s, color 0.1s, border-color 0.1s;
+    transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
   }
 
   .ff-filter-btn:hover {
@@ -306,7 +306,7 @@
     width: 260px;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 6px;
+    border-radius: var(--sq-sm);
     padding: 8px;
     z-index: 100;
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
@@ -334,13 +334,13 @@
     height: 22px;
     padding: 0 8px;
     border: 1px solid var(--border);
-    border-radius: 11px;
+    border-radius: var(--sq-lg);
     background: var(--surface-high);
     color: var(--text-muted);
     font-size: 11px;
     font-family: inherit;
     cursor: pointer;
-    transition: all 0.1s;
+    transition: all var(--transition-fast);
     white-space: nowrap;
   }
 

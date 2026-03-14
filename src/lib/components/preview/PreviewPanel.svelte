@@ -520,7 +520,7 @@
     height: 100%;
     cursor: col-resize;
     z-index: 10;
-    transition: background 0.15s;
+    transition: background var(--transition);
   }
 
   .resize-handle:hover,
@@ -563,11 +563,11 @@
     background: none;
     color: var(--text-muted);
     cursor: pointer;
-    border-radius: 4px;
+    border-radius: var(--sq-xs);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.1s, color 0.1s;
+    transition: background var(--transition-fast), color var(--transition-fast);
   }
 
   .hdr-btn:hover {

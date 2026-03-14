@@ -105,7 +105,7 @@
     flex-direction: column;
     align-items: center;
     padding: 8px 4px 6px;
-    border-radius: 4px;
+    border-radius: var(--sq-xs);
     cursor: default;
     border: 1px solid transparent;
     transition: background-color 0.05s, border-color 0.05s;
@@ -132,7 +132,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 2px;
+    border-radius: var(--sq-xs);
     overflow: hidden;
     flex-shrink: 0;
   }

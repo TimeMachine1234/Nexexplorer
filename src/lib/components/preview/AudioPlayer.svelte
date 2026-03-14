@@ -253,7 +253,7 @@
     cursor: pointer;
     padding: 4px;
     border-radius: 50%;
-    transition: color 0.1s, background 0.1s;
+    transition: color var(--transition-fast), background var(--transition-fast);
   }
 
   .ap-btn:hover {
@@ -307,7 +307,7 @@
     right: 0;
     height: 4px;
     background: rgba(255, 255, 255, 0.1);
-    border-radius: 2px;
+    border-radius: var(--sq-xs);
     overflow: hidden;
     pointer-events: none;
   }
@@ -316,7 +316,7 @@
   .ap-vol-fill {
     height: 100%;
     background: var(--accent);
-    border-radius: 2px;
+    border-radius: var(--sq-xs);
     transition: width 0.05s linear;
   }
 
@@ -344,7 +344,7 @@
     border: 2px solid white;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
     cursor: pointer;
-    transition: transform 0.1s;
+    transition: transform var(--transition-fast);
   }
 
   .ap-seek::-webkit-slider-thumb:hover,

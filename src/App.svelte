@@ -5,6 +5,7 @@
   import PreviewPanel from "./lib/components/preview/PreviewPanel.svelte";
   import QuickPreview from "./lib/components/preview/QuickPreview.svelte";
   import SearchOverlay from "./lib/components/search/SearchOverlay.svelte";
+  import SettingsDialog from "./lib/components/dialogs/SettingsDialog.svelte";
   import {
     layout,
     getActivePane,
@@ -21,11 +22,13 @@
   import { setupTransferListener, transfers } from "./lib/stores/transfers";
   import { selectedFileForPreview, debouncedPreviewPath } from "./lib/stores/preview";
   import { invoke } from "@tauri-apps/api/core";
+  import { settings } from "./lib/stores/settings";
 
   let paneManager: PaneManager | undefined = $state();
   let showTransferPanel = $state(false);
   let showPreviewPanel = $state(false);
   let showSearch = $state(false);
+  let showSettings = $state(false);
   let previewFilePath: string | null = $state(null);
   let quickPreviewPath: string | null = $state(null);
 
@@ -52,6 +55,40 @@
     if ($transfers.length > 0 && $transfers.some(t => t.status === "Running" || t.status === "Queued")) {
       showTransferPanel = true;
     }
+  });
+
+  // Apply appearance settings as CSS variables on :root
+  $effect(() => {
+    const s = $settings;
+    const root = document.documentElement;
+
+    // Round corners
+    const sq = s.roundCorners;
+    root.style.setProperty('--sq-xs',   sq ? '4px'    : '0px');
+    root.style.setProperty('--sq-sm',   sq ? '6px'    : '0px');
+    root.style.setProperty('--sq-md',   sq ? '10px'   : '0px');
+    root.style.setProperty('--sq-lg',   sq ? '14px'   : '0px');
+    root.style.setProperty('--sq-xl',   sq ? '18px'   : '0px');
+    root.style.setProperty('--sq-2xl',  sq ? '22px'   : '0px');
+    root.style.setProperty('--sq-full', sq ? '9999px' : '0px');
+
+    // Animations
+    const an = s.animations;
+    root.style.setProperty('--transition-fast', an ? '90ms'  : '0ms');
+    root.style.setProperty('--transition',      an ? '150ms' : '0ms');
+    root.style.setProperty('--transition-slow', an ? '250ms' : '0ms');
+
+    // Row density
+    const rh = s.rowDensity === 'compact' ? '26px' : s.rowDensity === 'comfortable' ? '32px' : '40px';
+    root.style.setProperty('--row-height', rh);
+
+    // Alternating rows
+    root.style.setProperty('--alt-row-bg', s.alternatingRows
+      ? 'color-mix(in srgb, var(--surface-high) 45%, transparent)'
+      : 'transparent');
+
+    // Inactive pane opacity
+    root.style.setProperty('--inactive-pane-opacity', String(s.inactivePaneOpacity));
   });
 
   // Auto-update preview panel when selection changes (debounced to avoid memory leaks)
@@ -125,6 +162,12 @@
     if (e.ctrlKey && e.key === "h") {
       e.preventDefault();
       toggleHiddenFiles();
+      return;
+    }
+    // Ctrl+, = Settings
+    if (e.ctrlKey && e.key === ",") {
+      e.preventDefault();
+      showSettings = true;
       return;
     }
     // Ctrl+F = Search overlay
@@ -236,7 +279,7 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <div class="app-layout">
-  <Sidebar onNavigate={handleSidebarNavigate} {currentPath} />
+  <Sidebar onNavigate={handleSidebarNavigate} {currentPath} onOpenSettings={() => showSettings = true} />
   <div class="main-area">
     <div class="pane-row">
       <PaneManager bind:this={paneManager} />
@@ -268,6 +311,8 @@
     onNavigate={(path) => { handleSidebarNavigate(path); showSearch = false; }}
   />
 {/if}
+
+<SettingsDialog bind:open={showSettings} />
 
 <style>
   .app-layout {

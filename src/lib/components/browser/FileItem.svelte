@@ -1,6 +1,7 @@
 <script lang="ts">
   import FileIcon from "../common/FileIcon.svelte";
   import { getNameTokens } from "../../utils/folderFilter";
+  import { settings } from "../../stores/settings";
 
   interface FileEntry {
     name: string;
@@ -23,6 +24,14 @@
   }
 
   let { entry, onNavigate, onOpenFile, onContextMenu, onSelect, currentPath, selected = false, filterText = "" }: Props = $props();
+
+  function getDisplayName(): string {
+    if (!$settings.showExtensions && !entry.is_dir && entry.extension) {
+      const ext = entry.extension.startsWith(".") ? entry.extension : `.${entry.extension}`;
+      return entry.name.endsWith(ext) ? entry.name.slice(0, -ext.length) : entry.name;
+    }
+    return entry.name;
+  }
 
   function highlightName(name: string, filter: string): string {
     const tokens = getNameTokens(filter);
@@ -72,13 +81,17 @@
     return `${currentPath}${sep}${entry.name}`;
   }
 
-  function handleDblClick() {
+  function openItem() {
     const fullPath = getFullPath();
     if (entry.is_dir) {
       onNavigate(fullPath);
     } else {
       onOpenFile(fullPath);
     }
+  }
+
+  function handleDblClick() {
+    if (!$settings.singleClickOpen) openItem();
   }
 
   function handleDragStart(e: DragEvent) {
@@ -89,7 +102,16 @@
   }
 
   function handleClick(e: MouseEvent) {
+    if ($settings.actOnPress) return; // already handled in mousedown
     onSelect(getFullPath(), entry, e);
+    if ($settings.singleClickOpen) openItem();
+  }
+
+  function handleMouseDown(e: MouseEvent) {
+    if (!$settings.actOnPress) return;
+    onSelect(getFullPath(), entry, e);
+    // singleClickOpen on press means we open on mousedown
+    if ($settings.singleClickOpen) openItem();
   }
 
   function handleRightClick(e: MouseEvent) {
@@ -107,14 +129,21 @@
   class:selected={selected}
   ondblclick={handleDblClick}
   onclick={handleClick}
+  onmousedown={handleMouseDown}
   oncontextmenu={handleRightClick}
   ondragstart={handleDragStart}
   draggable="true"
   role="row"
   tabindex="0"
 >
+  {#if $settings.showSelectionBoxes}
+    <!-- svelte-ignore a11y_click_events_have_key_events -->
+    <div class="col-checkbox" onclick={(e) => { e.stopPropagation(); onSelect(getFullPath(), entry, e); }}>
+      <span class="checkbox" class:checked={selected}></span>
+    </div>
+  {/if}
   <div class="col-icon"><FileIcon extension={entry.extension} isDir={entry.is_dir} /></div>
-  <div class="col-name" class:is-dir={entry.is_dir}>{#if filterText}{@html highlightName(entry.name, filterText)}{:else}{entry.name}{/if}</div>
+  <div class="col-name" class:is-dir={entry.is_dir}>{#if filterText}{@html highlightName(getDisplayName(), filterText)}{:else}{getDisplayName()}{/if}</div>
   <div class="col-size">{formatSize(entry.size)}</div>
   <div class="col-modified">{formatDate(entry.modified)}</div>
   <div class="col-type">{getTypeName()}</div>
@@ -124,13 +153,17 @@
   .file-item {
     display: flex;
     align-items: center;
-    height: 26px;
+    height: var(--row-height, 26px);
     padding: 0 10px 0 0;
     cursor: default;
-    transition: background-color 90ms ease, border-color 90ms ease;
+    transition: background-color var(--transition-fast) ease, border-color var(--transition-fast) ease;
     border-left: 2px solid transparent;
     position: relative;
     user-select: none;
+  }
+
+  .file-item:nth-child(even) {
+    background-color: var(--alt-row-bg, transparent);
   }
 
   .file-item:hover {
@@ -159,6 +192,51 @@
 
   .file-item.is-hidden .col-name {
     color: var(--text-muted);
+  }
+
+  .col-checkbox {
+    width: 20px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 6px;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+  }
+
+  .file-item:hover .col-checkbox,
+  .file-item.selected .col-checkbox {
+    opacity: 1;
+  }
+
+  .checkbox {
+    width: 13px;
+    height: 13px;
+    border: 1px solid var(--border-active);
+    border-radius: var(--sq-xs);
+    background: var(--surface);
+    display: block;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .checkbox.checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .checkbox.checked::after {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 1px;
+    width: 5px;
+    height: 8px;
+    border: 1.5px solid #fff;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg);
   }
 
   .col-icon {
@@ -224,7 +302,7 @@
     text-decoration: underline;
     text-decoration-color: var(--accent);
     text-underline-offset: 2px;
-    border-radius: 2px;
+    border-radius: var(--sq-xs);
     font-weight: 500;
   }
 </style>

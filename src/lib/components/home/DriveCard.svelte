@@ -65,7 +65,7 @@
     flex-direction: column;
     gap: 6px;
     padding: 8px 10px;
-    border-radius: var(--radius-xs);
+    border-radius: var(--sq-xs);
     border: 1px solid var(--border-subtle);
     background: var(--surface);
     color: var(--text-secondary);

@@ -60,7 +60,7 @@
     gap: 8px;
     height: 30px;
     padding: 0 10px;
-    border-radius: var(--radius-xs);
+    border-radius: var(--sq-xs);
     border: 1px solid transparent;
     background: var(--surface);
     color: var(--text-secondary);

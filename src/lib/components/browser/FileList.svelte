@@ -3,6 +3,7 @@
   import type { SortField } from "../../stores/panes";
   import { getNameTokens } from "../../utils/folderFilter";
   import { processEntries } from "../../utils/entryProcessing";
+  import { settings } from "../../stores/settings";
 
   interface FileEntry {
     name: string;
@@ -54,7 +55,8 @@
     return processedEntries.length;
   }
 
-  let totalHeight = $derived(processedEntries.length * ROW_HEIGHT);
+  const SCROLL_EXTRA = 200;
+  let totalHeight = $derived(processedEntries.length * ROW_HEIGHT + ($settings.scrollBeyondLastItem ? SCROLL_EXTRA : 0));
 
   let startIndex = $derived(Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN));
   let endIndex = $derived(
@@ -156,7 +158,7 @@
     cursor: pointer;
     font-family: inherit;
     padding: 0 0 0 5px;
-    transition: color 0.1s;
+    transition: color var(--transition-fast);
     text-align: left;
     display: flex;
     align-items: center;

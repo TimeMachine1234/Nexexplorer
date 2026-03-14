@@ -341,7 +341,7 @@
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 14px;
+    border-radius: var(--sq-lg);
     box-shadow:
       0 0 0 1px rgba(255, 255, 255, 0.04),
       0 24px 80px rgba(0, 0, 0, 0.7);
@@ -364,13 +364,13 @@
     justify-content: center;
     width: 30px;
     height: 30px;
-    border-radius: 8px;
+    border-radius: var(--sq-md);
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(255, 255, 255, 0.05);
     color: rgba(255, 255, 255, 0.55);
     cursor: pointer;
     flex-shrink: 0;
-    transition: all 0.12s;
+    transition: all var(--transition);
   }
 
   .back-btn:hover {
@@ -417,12 +417,12 @@
     width: 28px;
     height: 28px;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 7px;
+    border-radius: var(--sq-md);
     background: transparent;
     color: rgba(255, 255, 255, 0.35);
     cursor: pointer;
     flex-shrink: 0;
-    transition: all 0.12s;
+    transition: all var(--transition);
   }
 
   .filter-toggle:hover {
@@ -468,14 +468,14 @@
     height: 26px;
     padding: 0 8px;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 5px;
+    border-radius: var(--sq-sm);
     background: rgba(255, 255, 255, 0.05);
     color: rgba(255, 255, 255, 0.85);
     font-size: 12px;
     font-family: inherit;
     outline: none;
     box-sizing: border-box;
-    transition: border-color 0.1s;
+    transition: border-color var(--transition-fast);
   }
 
   .filter-input:focus {
@@ -554,7 +554,7 @@
     height: 18px;
     padding: 0 4px;
     border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 4px;
+    border-radius: var(--sq-xs);
     background: rgba(255, 255, 255, 0.06);
     font-size: 10px;
     font-family: inherit;

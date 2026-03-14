@@ -349,7 +349,7 @@
     right: 12px;
     bottom: 12px;
     border: 1px solid color-mix(in srgb, var(--border-strong) 90%, transparent);
-    border-radius: 8px;
+    border-radius: var(--sq-md);
     background: color-mix(in srgb, var(--surface-float) 86%, transparent);
     overflow: hidden;
     pointer-events: none;
@@ -371,6 +371,6 @@
     border: 1px solid var(--accent);
     background: color-mix(in srgb, var(--accent) 18%, transparent);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-hover) 60%, transparent);
-    border-radius: 4px;
+    border-radius: var(--sq-xs);
   }
 </style>
