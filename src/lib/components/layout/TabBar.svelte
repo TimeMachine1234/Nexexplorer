@@ -37,6 +37,7 @@
     }))
   );
   let showCloseButtons = $derived(tabs.length > 1);
+  let isOverflowing = $derived(canScrollLeft || canScrollRight);
 
   function updateScrollState() {
     if (!scrollEl) return;
@@ -100,11 +101,13 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="tab-bar" onmousedown={handleDragStart}>
   <div class="tabs-region">
-    <button class="scroll-arrow" class:is-disabled={!canScrollLeft} onclick={scrollLeft} title="Scroll tabs left" disabled={!canScrollLeft} aria-disabled={!canScrollLeft}>
-      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M6.5 2L3.5 5l3 3"/>
-      </svg>
-    </button>
+    {#if isOverflowing}
+      <button class="scroll-arrow" class:is-disabled={!canScrollLeft} onclick={scrollLeft} title="Scroll tabs left" disabled={!canScrollLeft} aria-disabled={!canScrollLeft}>
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6.5 2L3.5 5l3 3"/>
+        </svg>
+      </button>
+    {/if}
 
     <div
       class="tabs-scroll"
@@ -147,20 +150,32 @@
           {/if}
         </div>
       {/each}
+
+      {#if !isOverflowing}
+        <button class="tab-new tab-new-inline" onclick={onNewTab} title="New tab (Ctrl+T)">
+          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+            <path d="M6 1v10M1 6h10"/>
+          </svg>
+        </button>
+      {/if}
     </div>
 
-    <button class="scroll-arrow" class:is-disabled={!canScrollRight} onclick={scrollRight} title="Scroll tabs right" disabled={!canScrollRight} aria-disabled={!canScrollRight}>
-      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3.5 2l3 3-3 3"/>
-      </svg>
-    </button>
+    {#if isOverflowing}
+      <button class="scroll-arrow" class:is-disabled={!canScrollRight} onclick={scrollRight} title="Scroll tabs right" disabled={!canScrollRight} aria-disabled={!canScrollRight}>
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3.5 2l3 3-3 3"/>
+        </svg>
+      </button>
+    {/if}
   </div>
 
-  <button class="tab-new" onclick={onNewTab} title="New tab (Ctrl+T)">
-    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
-      <path d="M6 1v10M1 6h10"/>
-    </svg>
-  </button>
+  {#if isOverflowing}
+    <button class="tab-new" onclick={onNewTab} title="New tab (Ctrl+T)">
+      <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+        <path d="M6 1v10M1 6h10"/>
+      </svg>
+    </button>
+  {/if}
 
   <!-- Drag spacer (fills remaining space, allows window drag) -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -325,7 +340,12 @@
     color: var(--text);
   }
 
-  /* ─── New-tab button (inside scroll, after last tab) ───────────────────────── */
+  /* ─── New-tab button ───────────────────────────────────────────────────────── */
+  .tab-new-inline {
+    margin-left: 4px;
+    flex-shrink: 0;
+  }
+
   .tab-new {
     width: 34px;
     height: var(--tab-control-height);
