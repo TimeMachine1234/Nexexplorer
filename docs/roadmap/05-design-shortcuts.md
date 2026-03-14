@@ -37,25 +37,62 @@
 Inspired by File Pilot — dark charcoal, not pure black, easier on eyes.
 
 ```css
---bg:            #1a1a1a;   /* Dark charcoal — main window background */
---surface:       #222222;   /* Panels, sidebar, cards */
---surface-high:  #2a2a2a;   /* Dropdowns, context menus, modals */
---border:        #333333;   /* Subtle borders */
---border-active: #444444;   /* Hover and active borders */
---text:          #e8e8e8;   /* Primary text — file names, headings */
---text-muted:    #999999;   /* Secondary — sizes, dates, metadata */
---text-dim:      #555555;   /* Disabled states */
---accent:        #00b4d8;   /* Cyan/teal — matches File Pilot's blue accent */
---ai:            #a855f7;   /* Purple — ALL AI features, always */
---success:       #22c55e;   /* Green — transfers complete, saved */
---danger:        #ef4444;   /* Red — delete, errors */
---warning:       #f97316;   /* Orange — warnings */
---selected-bg:   #1a4a7a;   /* Strong blue selection row like File Pilot */
---folder-yellow: #f4b942;   /* Folder icon color — matches File Pilot */
+/* Core palette */
+--bg:                /* Dark charcoal — main window background */
+--surface:           /* Panels, sidebar, cards */
+--surface-high:      /* Dropdowns, hover states */
+--surface-raised:    /* Elevated panels */
+--surface-float:     /* Floating elements (minimap, picker panels) */
+--border:            /* Subtle borders */
+--border-subtle:     /* Very subtle, e.g. drive bars */
+--border-active:     /* Hover and active borders */
+--border-strong:     /* Prominent borders */
+--border-focus:      /* Focus ring */
+--text:              /* Primary text — file names, headings */
+--text-secondary:    /* Secondary labels */
+--text-muted:        /* Metadata, secondary hints */
+--text-dim:          /* Disabled / very faint */
+--text-placeholder:  /* Input placeholder */
+--accent:            /* Cyan/teal — primary accent */
+--accent-hover:      /* Hovered accent */
+--accent-active:     /* Pressed accent */
+--accent-dim:        /* Translucent accent background (active nav items) */
+--accent-glow:       /* Glow effect on focus */
+--accent-border:     /* Accent-tinted border */
+--ai:                /* Purple — ALL AI features, always */
+--success / --success-dim / --success-border
+--danger  / --danger-dim  / --danger-border
+--warning / --warning-dim / --warning-border
+--folder-yellow:     /* Folder icon color */
+
+/* Squircle radius tokens — use these, never --radius-* */
+--sq-xs:    4px      /* Tiny indicators */
+--sq-sm:    6px      /* Chips, crumb buttons */
+--sq-md:    10px     /* Buttons, inputs */
+--sq-lg:    14px     /* Cards, menus */
+--sq-xl:    18px     /* Address bar, larger panels */
+--sq-2xl:   22px     /* Modals, dialogs */
+--sq-icon:  28%      /* Square icons/avatars */
+--sq-full:  9999px   /* Pills, toggles */
+
+/* Transitions */
+--transition-fast:   90ms ease-out
+--transition:        150ms ease-out
+--transition-slow:   250ms ease-out
+--ease-out:          cubic-bezier(0.16, 1, 0.3, 1)
+
+/* Shadows */
+--shadow-xs  --shadow-sm  --shadow-md  --shadow-lg  --shadow-float  --shadow-inset
+
+/* Z-index layers */
+--z-base  --z-raised  --z-dropdown  --z-overlay  --z-modal  --z-toast
 ```
 
-**Font:** Inter
+**Font:** Inter (system fallback stack)
 **Row height:** 28px compact / 36px comfortable
+**Tab height:** 38px (30px control height)
 **All AI features use purple** — users instantly know what is AI
-**Max animation:** 200ms
+**Max animation:** 200ms (spring easing `cubic-bezier(0.22, 1, 0.36, 1)` for tabs/pickers)
 **Never block the UI thread**
+**Icons:** Inline SVG only — no emoji, no icon libraries
+**`requestAnimationFrame` over `setTimeout`** for all DOM sync (focus, resize, scroll state)

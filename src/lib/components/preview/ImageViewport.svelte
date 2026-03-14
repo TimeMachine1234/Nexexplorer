@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onDestroy } from "svelte";
+
   interface Props {
     imageUrl: string;
     altName: string;
@@ -35,9 +37,93 @@
 
   let imgContainerEl: HTMLDivElement | undefined = $state();
   let imgEl: HTMLImageElement | undefined = $state();
+  let containerW = $state(0);
+  let containerH = $state(0);
+  let naturalW = $state(0);
+  let naturalH = $state(0);
+  let minimapW = $state(0);
+  let minimapH = $state(0);
+  let minimapViewX = $state(0);
+  let minimapViewY = $state(0);
+  let minimapViewW = $state(0);
+  let minimapViewH = $state(0);
+  let showMinimap = $state(false);
+  let containerResizeObserver: ResizeObserver | undefined;
 
   $effect(() => { bindImgEl(imgEl); });
   $effect(() => { bindContainerEl(imgContainerEl); });
+
+  $effect(() => {
+    if (!imgContainerEl) return;
+
+    containerResizeObserver?.disconnect();
+    containerResizeObserver = new ResizeObserver(() => {
+      if (!imgContainerEl) return;
+      containerW = imgContainerEl.clientWidth;
+      containerH = imgContainerEl.clientHeight;
+    });
+    containerResizeObserver.observe(imgContainerEl);
+
+    containerW = imgContainerEl.clientWidth;
+    containerH = imgContainerEl.clientHeight;
+
+    return () => {
+      containerResizeObserver?.disconnect();
+    };
+  });
+
+  $effect(() => {
+    if (!naturalW || !naturalH || !containerW || !containerH) {
+      showMinimap = false;
+      return;
+    }
+
+    if (imgZoom <= 1.01) {
+      showMinimap = false;
+      return;
+    }
+
+    const baseScale = Math.min(containerW / naturalW, containerH / naturalH);
+    if (!Number.isFinite(baseScale) || baseScale <= 0) {
+      showMinimap = false;
+      return;
+    }
+
+    const zoomedScale = baseScale * imgZoom;
+    const centerX = containerW / 2;
+    const centerY = containerH / 2;
+    const halfNatW = naturalW / 2;
+    const halfNatH = naturalH / 2;
+
+    const left = halfNatW + (0 - centerX - imgPanX) / zoomedScale;
+    const top = halfNatH + (0 - centerY - imgPanY) / zoomedScale;
+    const right = halfNatW + (containerW - centerX - imgPanX) / zoomedScale;
+    const bottom = halfNatH + (containerH - centerY - imgPanY) / zoomedScale;
+
+    const visibleLeft = Math.max(0, Math.min(naturalW, left));
+    const visibleTop = Math.max(0, Math.min(naturalH, top));
+    const visibleRight = Math.max(0, Math.min(naturalW, right));
+    const visibleBottom = Math.max(0, Math.min(naturalH, bottom));
+
+    const visibleW = Math.max(1, visibleRight - visibleLeft);
+    const visibleH = Math.max(1, visibleBottom - visibleTop);
+
+    const maxMiniW = 140;
+    const maxMiniH = 100;
+    const mapScale = Math.min(maxMiniW / naturalW, maxMiniH / naturalH);
+
+    minimapW = Math.max(48, Math.round(naturalW * mapScale));
+    minimapH = Math.max(36, Math.round(naturalH * mapScale));
+
+    const sx = minimapW / naturalW;
+    const sy = minimapH / naturalH;
+
+    minimapViewX = visibleLeft * sx;
+    minimapViewY = visibleTop * sy;
+    minimapViewW = Math.max(8, visibleW * sx);
+    minimapViewH = Math.max(8, visibleH * sy);
+    showMinimap = true;
+  });
 
   // --- Wheel: Ctrl+scroll = zoom, scroll = pan (rAF batched) ---
   let _wheelDX = 0;
@@ -142,6 +228,17 @@
     onColorPicked(hex);
     navigator.clipboard.writeText(hex).catch(() => {});
   }
+
+  function onImgLoad() {
+    if (!imgEl) return;
+    naturalW = imgEl.naturalWidth;
+    naturalH = imgEl.naturalHeight;
+  }
+
+  onDestroy(() => {
+    containerResizeObserver?.disconnect();
+    if (_wheelRaf) cancelAnimationFrame(_wheelRaf);
+  });
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -165,6 +262,7 @@
     bind:this={imgEl}
     src={imageUrl}
     alt={altName}
+    onload={onImgLoad}
     class="preview-img"
     draggable="false"
     style="
@@ -183,6 +281,16 @@
         background-position: {loupeBgPosX}px {loupeBgPosY}px;
       "
     ></div>
+  {/if}
+
+  {#if showMinimap}
+    <div class="zoom-minimap" style="width: {minimapW}px; height: {minimapH}px;">
+      <div class="zoom-minimap-image" style="background-image: url({imageUrl});"></div>
+      <div
+        class="zoom-minimap-viewport"
+        style="left: {minimapViewX}px; top: {minimapViewY}px; width: {minimapViewW}px; height: {minimapViewH}px;"
+      ></div>
+    </div>
   {/if}
 </div>
 
@@ -234,5 +342,35 @@
     box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     transform: translate(-50%, -50%);
     background-color: var(--bg);
+  }
+
+  .zoom-minimap {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    border: 1px solid color-mix(in srgb, var(--border-strong) 90%, transparent);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--surface-float) 86%, transparent);
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 15;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(4px);
+  }
+
+  .zoom-minimap-image {
+    position: absolute;
+    inset: 0;
+    background-size: 100% 100%;
+    background-position: center;
+    opacity: 0.85;
+  }
+
+  .zoom-minimap-viewport {
+    position: absolute;
+    border: 1px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-hover) 60%, transparent);
+    border-radius: 4px;
   }
 </style>

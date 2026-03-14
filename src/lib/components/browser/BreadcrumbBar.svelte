@@ -17,6 +17,7 @@
   let isEditing = $state(false);
   let editValue = $state("");
   let inputEl: HTMLInputElement | undefined = $state();
+  let focusFrame = 0;
 
   interface Segment {
     label: string;
@@ -38,9 +39,13 @@
   });
 
   function startEditing() {
+    if (isEditing) return;
     isEditing = true;
     editValue = currentPath;
-    setTimeout(() => inputEl?.select(), 0);
+    cancelAnimationFrame(focusFrame);
+    focusFrame = requestAnimationFrame(() => {
+      inputEl?.select();
+    });
   }
 
   function handleKeydown(e: KeyboardEvent) {

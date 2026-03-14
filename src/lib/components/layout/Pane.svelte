@@ -521,15 +521,9 @@
         />
       {/snippet}
     </TabBar>
-    {#if isHome}
-      <HomeView
-        onNavigate={(p) => navigateTo(p)}
-        onOpenFile={openFile}
-      />
-    {:else}
     <BreadcrumbBar
       bind:this={breadcrumbBar}
-      currentPath={tabData.path}
+      currentPath={isHome ? "" : tabData.path}
       canBack={canTabGoBack(tabData)}
       canForward={canTabGoForward(tabData)}
       onNavigate={(p) => navigateTo(p)}
@@ -538,6 +532,12 @@
       onPathSubmit={(p) => navigateTo(p)}
       onGoUp={handleGoUp}
     />
+    {#if isHome}
+      <HomeView
+        onNavigate={(p) => navigateTo(p)}
+        onOpenFile={openFile}
+      />
+    {:else}
     <div
       class="file-area"
       class:drag-over={dragOver}
@@ -583,6 +583,7 @@
         />
       {/if}
     </div>
+    {/if}
     {#if renamingPath}
       <Dialog title="Rename to:" onClose={cancelRename}>
         {#snippet children()}
@@ -617,7 +618,6 @@
         onFilterChange={handleFilterChange}
       />
     </div>
-    {/if}
   {/if}
 </div>
 

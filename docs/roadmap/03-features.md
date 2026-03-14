@@ -1,32 +1,32 @@
 # NexExplorer — Complete Feature Checklist
 
 ## NAVIGATION
-- [ ] Single pane file browser
-- [ ] Dual pane side by side (Ctrl+\)
+- [x] Single pane file browser
+- [x] Dual pane side by side (Ctrl+\)
 - [ ] Unlimited split panes horizontal and vertical
 - [ ] Save and restore custom pane layouts
-- [ ] Tabs per pane (Ctrl+T / Ctrl+W)
+- [x] Tabs per pane (Ctrl+T / Ctrl+W)
 - [ ] Tab persistence — remembers tabs after restart
 - [ ] Drag tabs between panes
-- [ ] Breadcrumb bar — each segment clickable
-- [ ] Path bar — click to type directly (Ctrl+L)
-- [ ] Back/Forward navigation (Alt+Left/Right)
-- [ ] History per tab
+- [x] Breadcrumb bar — each segment clickable
+- [x] Path bar — click to type directly (Ctrl+L)
+- [x] Back/Forward navigation (Alt+Left/Right)
+- [x] History per tab
 - [ ] Column/Miller view (folder hierarchy like macOS Finder)
 - [ ] Tree view in sidebar
 - [ ] Go To bar — type folder name, fuzzy find instantly
-- [ ] Folder bookmarks and favorites in sidebar
+- [x] Folder bookmarks and favorites in sidebar
 - [ ] Recent folders list
-- [ ] Pinned folders in sidebar
-- [ ] Quick access to Desktop, Documents, Downloads, Pictures
+- [x] Pinned folders in sidebar
+- [x] Quick access to Desktop, Documents, Downloads, Pictures
 
 ## DRIVES + DEVICES (Sidebar Section)
 
 **Local Drives**
-- [ ] All internal HDDs and SSDs auto-detected in sidebar
-- [ ] Drive label, used/free space shown under each drive
-- [ ] Visual storage bar per drive (like Windows Explorer)
-- [ ] Click drive to browse from root
+- [x] All internal HDDs and SSDs auto-detected in sidebar
+- [x] Drive label, used/free space shown under each drive
+- [x] Visual storage bar per drive (like Windows Explorer)
+- [x] Click drive to browse from root
 - [ ] Eject button for removable drives
 - [ ] Drive health indicator (S.M.A.R.T status if available)
 
@@ -80,62 +80,62 @@ Cloud folders auto-detected from what's installed on the user's machine. No logi
 - [ ] Never slow down the app waiting for cloud sync status — load async
 
 ## FILE BROWSING
-- [ ] List view (name, size, date, type columns)
-- [ ] Grid/thumbnail view
+- [x] List view (name, size, date, type columns)
+- [x] Grid/thumbnail view (multiple sizes: S/M/L/XL via drag-rail picker)
 - [ ] Compact view (dense)
-- [ ] Click column headers to sort, click again to reverse
-- [ ] Sort by: name, size, date modified, date created, type, extension
+- [x] Click column headers to sort, click again to reverse
+- [x] Sort by: name, size, date modified, date created, type, extension
 - [ ] Group by: type, date, size, first letter
-- [ ] Show/hide hidden files (Ctrl+H)
+- [x] Show/hide hidden files (Ctrl+H)
 - [ ] Show/hide file extensions toggle
-- [ ] Comprehensive file type icon set
+- [x] Comprehensive file type icon set
 - [ ] Thumbnail generation for images, videos, PDFs
-- [ ] Virtual scrolling — 500,000 files smooth at 60fps
+- [x] Virtual scrolling — large directories
 - [ ] Checkbox column for selection
-- [ ] Multi-select with Shift+click and Ctrl+click
+- [x] Multi-select with Shift+click and Ctrl+click
 - [ ] Invert selection (Ctrl+I)
 - [ ] Color labels on files and folders
 - [ ] Star/favorite individual files
 - [ ] File ratings (1-5 stars)
 - [ ] Custom tags on files
-- [ ] Bottom filter bar per pane — type to instantly filter current folder (pure memory, no DB calls)
-- [ ] Filter bar shows match count e.g. "12 of 847 items"
+- [x] Bottom filter bar per pane — type to instantly filter current folder (pure memory, no DB calls)
+- [x] Filter bar shows match count e.g. "12 of 847 items"
 
 ## INSPECTOR AND PREVIEW
 - [ ] Spacebar quick preview overlay
 - [ ] Inspector mode — hover folder shows contents in split view
-- [ ] Right-side preview panel (Ctrl+Shift+P)
-- [ ] Image preview with zoom and pan
-- [ ] PDF preview with page navigation and zoom
-- [ ] Text and code preview with syntax highlighting
-- [ ] Video preview with controls and scrubber
-- [ ] Audio preview with waveform and playback
+- [x] Right-side preview panel (Ctrl+Shift+P)
+- [x] Image preview with zoom and pan (+ loupe magnifier + color picker + minimap)
+- [x] PDF preview with page navigation and zoom
+- [x] Text and code preview with syntax highlighting
+- [x] Video preview with controls and scrubber
+- [x] Audio preview with waveform and playback
 - [ ] Preview of folder contents without opening
-- [ ] File metadata panel: size, dates, dimensions, page count, duration
+- [x] File metadata panel: size, dates, dimensions, page count, duration
 - [ ] EXIF data viewer for photos
 - [ ] Font preview for .ttf and .otf files
-- [ ] Archive peek without extracting
+- [x] Archive peek without extracting
 
 ## FILE OPERATIONS
-- [ ] Copy, Cut, Paste
-- [ ] Delete to Recycle Bin (Delete)
-- [ ] Permanent delete with confirmation (Shift+Delete)
-- [ ] Rename inline (F2)
-- [ ] New folder (Ctrl+Shift+N)
-- [ ] New file (Ctrl+Shift+F)
+- [x] Copy, Cut, Paste
+- [x] Delete to Recycle Bin (Delete)
+- [x] Permanent delete with confirmation (Shift+Delete)
+- [x] Rename inline (F2)
+- [x] New folder (Ctrl+Shift+N)
+- [x] New file (Ctrl+Shift+F)
 - [ ] Duplicate file (Ctrl+D)
 - [ ] Create shortcut
 - [ ] Create symlink and hard link
 - [ ] Copy file path to clipboard
 - [ ] Copy file name to clipboard
 - [ ] Open in Terminal here
-- [ ] Open with (choose app)
-- [ ] File properties panel
-- [ ] Transfer queue panel with: speed, percentage, ETA, file count
+- [x] Open with (choose app)
+- [x] File properties panel
+- [x] Transfer queue panel with: speed, percentage, ETA, file count
 - [ ] Pause and resume transfers
-- [ ] Cancel transfers
-- [ ] Conflict dialog: Skip / Replace / Rename / Apply to all
-- [ ] Queued file copies
+- [x] Cancel transfers
+- [x] Conflict dialog: Skip / Replace / Rename / Apply to all
+- [x] Queued file copies
 - [ ] Transfer history log
 
 ## BULK RENAME

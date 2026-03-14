@@ -109,10 +109,10 @@
     height: 28px;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--sq-md);
+    border-radius: var(--sq-xl);
     padding: 0 4px;
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-    overflow: hidden;
+    overflow: clip;
   }
 
   .address-bar:focus-within {
@@ -128,6 +128,7 @@
     height: 100%;
     cursor: text;
     overflow: hidden;
+    outline: none;
   }
 
   .address-crumb {
@@ -141,7 +142,7 @@
     font-size: 12px;
     font-family: inherit;
     cursor: pointer;
-    border-radius: var(--sq-sm);
+    border-radius: var(--sq-md);
     white-space: nowrap;
     transition: background var(--transition-fast), color var(--transition-fast);
   }

@@ -16,6 +16,10 @@ It features dual-pane browsing, file previews, search, and file operations (copy
 - **Frontend only**: `npm run dev`
 - **Type check**: `npx svelte-check`
 
+## Path Aliases
+- `$lib` → `./src/lib` (configured in `vite.config.ts`)
+- Use `import X from '$lib/components/...'` instead of relative `../../` paths
+
 ## Project Structure
 ```
 src/                          # Svelte frontend
@@ -32,12 +36,16 @@ src/                          # Svelte frontend
         Pane.svelte           # Dual-pane container
         PaneManager.svelte    # Manages pane state
         StatusBar.svelte      # Bottom status bar
-        Sidebar.svelte
+        Sidebar.svelte        # Resizable sidebar with SVG icons (no emoji)
         TitleBar.svelte
-        TabBar.svelte
+        TabBar.svelte         # Tabs with scroll arrows, dividers, window drag
+        ToolbarActions.svelte # View picker (list/grid sizes) with drag-rail slider
+        WindowControls.svelte # Min/max/close with HiDPI-aware snap rect sync
+        AddressBar.svelte     # Component-library address bar (squircle styled)
       preview/                # File preview components
         PreviewPanel.svelte   # Side preview panel
-        ImagePreview.svelte
+        PreviewBody.svelte    # Renders active preview type (image/video/text/etc.)
+        ImageViewport.svelte  # Extracted image viewer: zoom/pan/loupe/color-picker/minimap
         VideoPreview.svelte
         AudioPlayer.svelte
         PdfPreview.svelte
@@ -108,6 +116,10 @@ Split into focused files to save context — load only what you need:
 - Tauri 2 API is used (`@tauri-apps/api v2`), not Tauri v1
 - Svelte 5 is used with its new runes syntax where applicable
 - TailwindCSS 4 uses the new Vite plugin (`@tailwindcss/vite`), not PostCSS config
+- All icons are inline SVG — no emoji, no external icon libraries
+- Use squircle tokens (`--sq-xs`, `--sq-sm`, `--sq-md`, `--sq-lg`, `--sq-xl`, `--sq-2xl`) for border-radius, never `--radius-*`
+- Use `requestAnimationFrame`/`cancelAnimationFrame` instead of `setTimeout` for focus/DOM sync
+- `$lib` alias is available for all frontend imports
 
 ## 🧠 File Pilot Founder's Lessons (CRITICAL - Reference Always)
 **Source:** Validated by a real developer who built File Pilot, a comparable file manager. These lessons inform NexExplorer's architecture.

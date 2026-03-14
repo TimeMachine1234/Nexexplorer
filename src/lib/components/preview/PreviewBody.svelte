@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from "svelte";
   import AudioPlayer from "./AudioPlayer.svelte";
   import PdfPreview from "./PdfPreview.svelte";
 
@@ -91,6 +92,99 @@
 
   let textLines = $derived(textContent?.content.split("\n") ?? []);
 
+  let imageNaturalW = $state(0);
+  let imageNaturalH = $state(0);
+  let imageViewportW = $state(0);
+  let imageViewportH = $state(0);
+  let showImageMinimap = $state(false);
+  let minimapW = $state(0);
+  let minimapH = $state(0);
+  let minimapViewX = $state(0);
+  let minimapViewY = $state(0);
+  let minimapViewW = $state(0);
+  let minimapViewH = $state(0);
+  let imageResizeObserver: ResizeObserver | undefined;
+
+  $effect(() => {
+    if (!imgContainerEl) return;
+
+    imageResizeObserver?.disconnect();
+    imageResizeObserver = new ResizeObserver(() => {
+      if (!imgContainerEl) return;
+      imageViewportW = imgContainerEl.clientWidth;
+      imageViewportH = imgContainerEl.clientHeight;
+    });
+    imageResizeObserver.observe(imgContainerEl);
+
+    imageViewportW = imgContainerEl.clientWidth;
+    imageViewportH = imgContainerEl.clientHeight;
+
+    return () => imageResizeObserver?.disconnect();
+  });
+
+  $effect(() => {
+    if (
+      previewType !== "image" ||
+      imgZoom <= 1.01 ||
+      !imageNaturalW ||
+      !imageNaturalH ||
+      !imageViewportW ||
+      !imageViewportH
+    ) {
+      showImageMinimap = false;
+      return;
+    }
+
+    const baseScale = Math.min(imageViewportW / imageNaturalW, imageViewportH / imageNaturalH);
+    if (!Number.isFinite(baseScale) || baseScale <= 0) {
+      showImageMinimap = false;
+      return;
+    }
+
+    const zoomedScale = baseScale * imgZoom;
+    const centerX = imageViewportW / 2;
+    const centerY = imageViewportH / 2;
+    const halfNatW = imageNaturalW / 2;
+    const halfNatH = imageNaturalH / 2;
+
+    const left = halfNatW + (0 - centerX - imgPanX) / zoomedScale;
+    const top = halfNatH + (0 - centerY - imgPanY) / zoomedScale;
+    const right = halfNatW + (imageViewportW - centerX - imgPanX) / zoomedScale;
+    const bottom = halfNatH + (imageViewportH - centerY - imgPanY) / zoomedScale;
+
+    const visibleLeft = Math.max(0, Math.min(imageNaturalW, left));
+    const visibleTop = Math.max(0, Math.min(imageNaturalH, top));
+    const visibleRight = Math.max(0, Math.min(imageNaturalW, right));
+    const visibleBottom = Math.max(0, Math.min(imageNaturalH, bottom));
+
+    const visibleW = Math.max(1, visibleRight - visibleLeft);
+    const visibleH = Math.max(1, visibleBottom - visibleTop);
+
+    const maxMiniW = 140;
+    const maxMiniH = 100;
+    const mapScale = Math.min(maxMiniW / imageNaturalW, maxMiniH / imageNaturalH);
+    minimapW = Math.max(48, Math.round(imageNaturalW * mapScale));
+    minimapH = Math.max(36, Math.round(imageNaturalH * mapScale));
+
+    const sx = minimapW / imageNaturalW;
+    const sy = minimapH / imageNaturalH;
+    minimapViewX = visibleLeft * sx;
+    minimapViewY = visibleTop * sy;
+    minimapViewW = Math.max(8, visibleW * sx);
+    minimapViewH = Math.max(8, visibleH * sy);
+    showImageMinimap = true;
+  });
+
+  function onImageLoaded() {
+    if (!imgEl) return;
+    imageNaturalW = imgEl.naturalWidth;
+    imageNaturalH = imgEl.naturalHeight;
+  }
+
+  onDestroy(() => {
+    imageResizeObserver?.disconnect();
+  });
+
   function getDocIconPath(ext: string): string {
     switch (ext.toLowerCase()) {
       case "pdf": return "M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1zm5 0v4h4M5 8h2a1 1 0 010 2H5V8z";
@@ -145,6 +239,7 @@
         bind:this={imgEl}
         src={imageUrl}
         alt={metadataName || ""}
+        onload={onImageLoaded}
         class="preview-img"
         draggable="false"
         style="transform: translate({imgPanX}px, {imgPanY}px) scale({imgZoom});"
@@ -161,6 +256,16 @@
             background-position: {loupeBgPosX}px {loupeBgPosY}px;
           "
         ></div>
+      {/if}
+
+      {#if showImageMinimap}
+        <div class="zoom-minimap" style="width: {minimapW}px; height: {minimapH}px;">
+          <div class="zoom-minimap-image" style="background-image: url({imageUrl});"></div>
+          <div
+            class="zoom-minimap-viewport"
+            style="left: {minimapViewX}px; top: {minimapViewY}px; width: {minimapViewW}px; height: {minimapViewH}px;"
+          ></div>
+        </div>
       {/if}
     </div>
     {/key}
@@ -346,6 +451,36 @@
     box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     transform: translate(-50%, -50%);
     background-color: var(--bg);
+  }
+
+  .zoom-minimap {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    border: 1px solid color-mix(in srgb, var(--border-strong) 90%, transparent);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--surface-float) 86%, transparent);
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 15;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(4px);
+  }
+
+  .zoom-minimap-image {
+    position: absolute;
+    inset: 0;
+    background-size: 100% 100%;
+    background-position: center;
+    opacity: 0.85;
+  }
+
+  .zoom-minimap-viewport {
+    position: absolute;
+    border: 1px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-hover) 60%, transparent);
+    border-radius: 4px;
   }
 
   /* === Video === */

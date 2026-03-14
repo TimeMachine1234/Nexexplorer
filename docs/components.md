@@ -864,6 +864,86 @@ Used inside the existing `ContextMenu.svelte`:
 
 **Props:** `title?: string`, `showWindowControls?: boolean`, `theme?`, `customColor?`, `children?: Snippet`
 
+### TabBar
+
+`src/lib/components/layout/TabBar.svelte`
+
+Tab strip with overflow scrolling, window drag, and toolbar actions slot.
+
+```svelte
+<TabBar
+  tabs={paneData.tabs}
+  activeTabId={paneData.activeTabId}
+  showWindowControls={true}
+  onSwitchTab={(id) => switchTab(paneId, id)}
+  onCloseTab={(id) => closeTab(paneId, id)}
+  onNewTab={() => addTab(paneId)}
+>
+  {#snippet actions()}
+    <ToolbarActions ... />
+  {/snippet}
+</TabBar>
+```
+
+**Features:**
+- Scroll arrows appear when tabs overflow the container (hidden + disabled when not needed)
+- `ResizeObserver` + `requestAnimationFrame` debounce keeps scroll state accurate on resize
+- Dragging the empty spacer area moves the OS window (`appWindow.startDragging()`)
+- Double-clicking the drag spacer toggles maximize (tries `toggle_fullscreen` Tauri command, falls back to `toggleMaximize`)
+- Middle-click a tab to close it
+- Close buttons are hidden until hover/active (shown with `opacity` transition)
+- Tab dividers shown between adjacent tabs (not after the last)
+
+**Props:** `tabs: TabState[]`, `activeTabId: string`, `showWindowControls?: boolean`, `onSwitchTab`, `onCloseTab`, `onNewTab`, `actions?: Snippet`
+
+### ToolbarActions
+
+`src/lib/components/layout/ToolbarActions.svelte`
+
+Compact toolbar buttons + floating view-picker panel.
+
+```svelte
+<ToolbarActions
+  paneId={paneId}
+  paneCount={2}
+  showHidden={false}
+  viewMode="list"
+  gridIconSize={128}
+  onAddPane={() => addPane()}
+  onRemovePane={() => removePane(paneId)}
+  onToggleHidden={() => toggleHiddenFiles()}
+  onViewModeChange={(mode) => ...}
+  onIconSizeChange={(size) => ...}
+/>
+```
+
+**View picker panel** (opens on the grid-icon button):
+- 5 stops: XL (224px), L (160px), M (112px), S (80px), Details (list)
+- Drag the left-side rail to slide between stops
+- Animated dot snaps to selected stop (220ms spring easing)
+- Custom % input in the footer (50–200%, snaps to 8px grid)
+- Positioned below/above the trigger depending on available vertical space
+- Closes on Escape or click-outside
+
+**Props:** `paneId`, `paneCount`, `showHidden`, `viewMode`, `gridIconSize`, `onAddPane`, `onRemovePane`, `onToggleHidden`, `onViewModeChange`, `onIconSizeChange`
+
+### WindowControls
+
+`src/lib/components/layout/WindowControls.svelte`
+
+Windows-style minimize / maximize / close buttons. Syncs the maximize button's bounding rect to the Rust backend so Windows snap-layout hover works correctly.
+
+```svelte
+<WindowControls />
+```
+
+**Implementation notes:**
+- `ResizeObserver` on the maximize button + `window resize` event trigger rect sync
+- `requestAnimationFrame` debouncing prevents redundant Tauri IPC calls
+- Rect values are multiplied by `devicePixelRatio` for correct HiDPI positioning
+- Calls `set_maximize_button_rect` Tauri command (see `win32_snap.rs`)
+- Close button hover turns red (`#c42b1c`) per Windows 11 convention
+
 ### Toolbar
 
 ```svelte
@@ -881,15 +961,17 @@ Used inside the existing `ContextMenu.svelte`:
 
 ```svelte
 <script>
-  let currentPath = $state('/home/user/Documents');
+  let currentPath = $state('C:\\Users\\user\\Documents');
 </script>
 
 <AddressBar bind:path={currentPath} onnavigate={(p) => navigate(p)} />
 ```
 
-Shows breadcrumb segments. Click to enter edit mode. Enter to navigate.
+Shows breadcrumb path segments. Click any segment to navigate; click the bar to enter edit mode; Enter to commit; Escape to cancel.
 
-**Props:** `path?: string` (bindable), `onnavigate?: (path: string) => void`, `theme?`, `customColor?`
+**CSS details:** Uses `--sq-xl` radius on the bar, `--sq-md` on individual crumb buttons, `overflow: clip` (not `hidden`) to avoid scroll-container side-effects.
+
+**Props:** `path?: string` (bindable), `onnavigate?: (path: string) => void`, `theme?`, `customColor?`, `radius?: RadiusProp`
 
 ### MainLayout
 
@@ -1124,6 +1206,38 @@ Icons for well-known system locations.
 ## Preview Components
 
 All in `src/lib/components/preview/`.
+
+### ImageViewport
+
+`src/lib/components/preview/ImageViewport.svelte`
+
+Self-contained image viewer with zoom, pan, loupe magnifier, color picker, and minimap. Extracted from `PreviewBody.svelte` for reuse.
+
+**Features:**
+- **Zoom:** Ctrl+scroll to zoom centered on cursor (max 20×, min 0.1×). Wheel events are rAF-batched to prevent over-firing.
+- **Pan:** Pointer drag to pan. Uses `setPointerCapture` so drag works even if cursor leaves the element.
+- **Loupe:** Circular 160×160px magnifier at 2.5× that follows the cursor when `loupeActive` is true.
+- **Color picker:** Click anywhere on the image when `colorPickerActive` is true. Draws to a temporary canvas to read the exact pixel. Copies hex to clipboard automatically.
+- **Minimap:** Appears bottom-right when zoom > 1×. Shows a scaled thumbnail with a viewport rectangle that updates in real time.
+- **Checkerboard background:** `repeating-conic-gradient` pattern (no image assets needed) to show transparency.
+
+**Props:**
+| Prop | Type | Description |
+|---|---|---|
+| `imageUrl` | `string` | Image source URL |
+| `altName` | `string` | Alt text |
+| `colorPickerActive` | `boolean` | Enable color-pick mode (crosshair cursor) |
+| `loupeActive` | `boolean` | Enable loupe magnifier (cursor hidden) |
+| `showGrid` | `boolean` | Overlay a rule-of-thirds grid |
+| `imgZoom` | `number` | Current zoom level (1 = fit) |
+| `imgPanX/Y` | `number` | Current pan offset in px |
+| `onZoomChange` | `(z: number) => void` | Called when zoom changes |
+| `onPanChange` | `(x, y: number) => void` | Called when pan changes |
+| `onColorPicked` | `(hex: string) => void` | Called with picked color hex |
+| `bindImgEl` | `(el) => void` | Callback to receive the `<img>` element ref |
+| `bindContainerEl` | `(el) => void` | Callback to receive the container div ref |
+
+> **Note:** `PreviewBody.svelte` currently still has its own inline image viewport implementation. Migration to use `ImageViewport.svelte` is in progress.
 
 ### TextPreview
 

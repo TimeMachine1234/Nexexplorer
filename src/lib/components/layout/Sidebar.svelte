@@ -15,10 +15,13 @@
   // --- Resizable sidebar ---
   let sidebarWidth = $state(200);
   let isResizing = $state(false);
+  let isCollapsed = $state(false);
   const MIN_WIDTH = 140;
   const MAX_WIDTH = 400;
+  const COLLAPSED_WIDTH = 0;
 
   function onResizeStart(e: MouseEvent) {
+    if (isCollapsed) return;
     e.preventDefault();
     isResizing = true;
     const startX = e.clientX;
@@ -107,70 +110,106 @@
     if (!currentPath || currentPath === HOME_PATH) return false;
     return !$pinnedFolders.some((p) => normPath(p.path) === normPath(currentPath));
   }
+
+  function toggleSidebar() {
+    isCollapsed = !isCollapsed;
+  }
 </script>
 
-<aside class="sidebar" class:resizing={isResizing} style="width: {sidebarWidth}px">
-  <!-- svelte-ignore a11y_no_static_element_interactions -->
-  <div class="resize-handle" onmousedown={onResizeStart}></div>
+<aside class="sidebar" class:resizing={isResizing} class:collapsed={isCollapsed} style="width: {isCollapsed ? COLLAPSED_WIDTH : sidebarWidth}px; min-width: {isCollapsed ? COLLAPSED_WIDTH : MIN_WIDTH}px; max-width: {isCollapsed ? COLLAPSED_WIDTH : MAX_WIDTH}px; border-right-width: {isCollapsed ? 0 : 1}px;">
+  {#if !isCollapsed}
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="resize-handle" onmousedown={onResizeStart}></div>
 
-  <SidebarSection title="Home">
-    {#snippet children()}
-      <button class="nav-item" class:active={isActive(HOME_PATH)} onclick={() => onNavigate(HOME_PATH)}>
-        <span class="icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d={svgIcons.home}/></svg></span>
-        <span class="label">Home</span>
-      </button>
-      {#each homeFolders as item}
-        <button class="nav-item" class:active={isActive(item.path)} onclick={() => onNavigate(item.path)}>
-          <span class="icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d={svgIcons[item.iconKey]}/></svg></span>
-          <span class="label">{item.name}</span>
-        </button>
-      {/each}
-    {/snippet}
-  </SidebarSection>
-
-  <SidebarSection title="Pinned">
-    {#snippet actions()}
-      {#if canPin()}
-        <button class="section-btn" onclick={() => pinnedFolders.pin(currentPath)} title="Pin current folder">+</button>
-      {/if}
-    {/snippet}
-    {#snippet children()}
-      {#if $pinnedFolders.length === 0}
-        <div class="empty-hint">Navigate to a folder, then click + to pin it</div>
-      {:else}
-        {#each $pinnedFolders as pin}
-          <div class="pin-row" class:active={isActive(pin.path)}>
-            <button class="nav-item pin-nav" onclick={() => onNavigate(pin.path)}>
-              <span class="icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d={svgIcons.pin}/></svg></span>
-              <span class="label">{pin.name}</span>
+    <div class="sidebar-content">
+      <SidebarSection title="Home">
+        {#snippet children()}
+          <button class="nav-item" class:active={isActive(HOME_PATH)} onclick={() => onNavigate(HOME_PATH)}>
+            <span class="icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d={svgIcons.home}/></svg></span>
+            <span class="label">Home</span>
+          </button>
+          {#each homeFolders as item}
+            <button class="nav-item" class:active={isActive(item.path)} onclick={() => onNavigate(item.path)}>
+              <span class="icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d={svgIcons[item.iconKey]}/></svg></span>
+              <span class="label">{item.name}</span>
             </button>
-            <button class="unpin-btn" onclick={() => pinnedFolders.unpin(pin.path)} title="Unpin">×</button>
-          </div>
-        {/each}
-      {/if}
-    {/snippet}
-  </SidebarSection>
+          {/each}
+        {/snippet}
+      </SidebarSection>
 
-  <SidebarSection title="Drives">
-    {#snippet children()}
-      {#each drives as drive}
-        <button class="nav-item drive-item" onclick={() => onNavigate(`${drive.letter}:\\`)}>
-          <span class="icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d={svgIcons.drive}/></svg></span>
-          <div class="drive-info">
-            <span class="label">{drive.letter}: {drive.label}</span>
-            {#if drive.total_space > 0}
-              <div class="drive-bar-row">
-                <div class="drive-bar">
-                  <div class="drive-bar-fill" style="width: {usedPercent(drive)}%"></div>
-                </div>
-                <span class="drive-meta">{formatGB(drive.free_space)} free</span>
+      <SidebarSection title="Pinned">
+        {#snippet actions()}
+          {#if canPin()}
+            <button class="section-btn" onclick={() => pinnedFolders.pin(currentPath)} title="Pin current folder">+</button>
+          {/if}
+        {/snippet}
+        {#snippet children()}
+          {#if $pinnedFolders.length === 0}
+            <div class="empty-hint">Navigate to a folder, then click + to pin it</div>
+          {:else}
+            {#each $pinnedFolders as pin}
+              <div class="pin-row" class:active={isActive(pin.path)}>
+                <button class="nav-item pin-nav" onclick={() => onNavigate(pin.path)}>
+                  <span class="icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d={svgIcons.pin}/></svg></span>
+                  <span class="label">{pin.name}</span>
+                </button>
+                <button class="unpin-btn" onclick={() => pinnedFolders.unpin(pin.path)} title="Unpin">×</button>
               </div>
-            {/if}
-          </div>
-        </button>
-      {/each}
-    {/snippet}
-  </SidebarSection>
+            {/each}
+          {/if}
+        {/snippet}
+      </SidebarSection>
+
+      <SidebarSection title="Drives">
+        {#snippet children()}
+          {#each drives as drive}
+            <button class="nav-item drive-item" onclick={() => onNavigate(`${drive.letter}:\\`)}>
+              <span class="icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d={svgIcons.drive}/></svg></span>
+              <div class="drive-info">
+                <span class="label">{drive.letter}: {drive.label}</span>
+                {#if drive.total_space > 0}
+                  <div class="drive-bar-row">
+                    <div class="drive-bar">
+                      <div class="drive-bar-fill" style="width: {usedPercent(drive)}%"></div>
+                    </div>
+                    <span class="drive-meta">{formatGB(drive.free_space)} free</span>
+                  </div>
+                {/if}
+              </div>
+            </button>
+          {/each}
+        {/snippet}
+      </SidebarSection>
+    </div>
+  {/if}
+
+  {#if !isCollapsed}
+    <div class="sidebar-footer">
+      <button class="sidebar-toggle sidebar-menu-btn" type="button" title="Sidebar menu" aria-label="Sidebar menu">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+          <path d="M3 4h10" />
+          <path d="M3 8h10" />
+          <path d="M3 12h10" />
+        </svg>
+      </button>
+
+      <button class="sidebar-toggle sidebar-collapse-btn" type="button" onclick={toggleSidebar} title="Hide sidebar" aria-label="Hide sidebar">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 3L6 8l4 5" />
+        </svg>
+      </button>
+    </div>
+  {/if}
+
+  {#if isCollapsed}
+    <button class="sidebar-expand-btn" type="button" onclick={toggleSidebar} title="Show sidebar" aria-label="Show sidebar">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+        <path d="M3 4h10" />
+        <path d="M3 8h10" />
+        <path d="M3 12h10" />
+      </svg>
+    </button>
+  {/if}
 </aside>
 
 <style>
@@ -185,10 +224,21 @@
     padding: 8px 0 16px;
     flex-shrink: 0;
     position: relative;
-    min-width: 140px;
-    max-width: 400px;
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
+    transition: width 0.18s ease, padding 0.18s ease;
+  }
+
+  .sidebar.collapsed {
+    padding: 0;
+    overflow: visible;
+    background: transparent;
+  }
+
+  .sidebar-content {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
 
   .sidebar.resizing { user-select: none; }
@@ -207,6 +257,69 @@
   .resize-handle:hover,
   .sidebar.resizing .resize-handle {
     background: var(--accent-dim);
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    display: flex;
+    justify-content: flex-start;
+    gap: 6px;
+    padding: 8px 8px 0;
+  }
+
+  .sidebar-expand-btn {
+    position: absolute;
+    left: 8px;
+    bottom: 20px;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--surface-high) 85%, transparent);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+    padding: 0;
+    z-index: 20;
+  }
+
+  .sidebar-expand-btn:hover {
+    background: var(--surface-high);
+    color: var(--text);
+    border-color: var(--border-active);
+  }
+
+  .sidebar-toggle {
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--surface-high) 85%, transparent);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+    padding: 0;
+    flex-shrink: 0;
+  }
+
+  .sidebar-toggle:hover {
+    background: var(--surface-high);
+    color: var(--text);
+    border-color: var(--border-active);
+  }
+
+  .sidebar-menu-btn {
+    color: var(--text-secondary);
+  }
+
+  .sidebar-collapse-btn {
+    color: var(--text-muted);
   }
 
   .nav-item {

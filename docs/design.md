@@ -217,6 +217,31 @@ A comprehensive guide to every component needed for Nexexplorer. This document t
 5. **Minimal Chrome** - UI stays out of the way, maximizes content space
 6. **Dark Mode Support** - All components work in light and dark themes
 
+## Icon Rule
+
+**All icons are inline SVG. No emoji. No external icon libraries.**
+
+Emoji render inconsistently across Windows versions and fonts. All icons use `stroke="currentColor"` with consistent `stroke-width="1.4"` on a `16×16 viewBox`. SVG icon paths live inline in each component that uses them (or in a `Record<string, string>` dictionary for sets of related icons).
+
+## Squircle Token Rule
+
+**Never use `--radius-*` CSS variables. Always use `--sq-*` squircle tokens.**
+
+| Token | Value | Use case |
+|---|---|---|
+| `--sq-xs` | 4px | Tiny elements, badges |
+| `--sq-sm` | 6px | Chips, crumb buttons |
+| `--sq-md` | 10px | Buttons, inputs, small panels |
+| `--sq-lg` | 14px | Cards, menus |
+| `--sq-xl` | 18px | Address bar, larger panels |
+| `--sq-2xl` | 22px | Modals, dialogs |
+| `--sq-icon` | 28% | Square icons/avatars |
+| `--sq-full` | 9999px | Pills, toggles |
+
+## Animation / Timing Rule
+
+Use `requestAnimationFrame`/`cancelAnimationFrame` instead of `setTimeout` for all DOM-synchronization work (focus, scroll state, rect measurement). This aligns work with the browser's paint cycle and avoids the 0–4ms jitter of `setTimeout(fn, 0)`.
+
 ## Next Steps
 
 1. Create design mockups for each component category

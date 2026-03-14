@@ -19,16 +19,64 @@
 
   const appWindow = getCurrentWindow();
 
-  function getTabLabel(tab: TabState): string {
-    if (tab.path === "~home") return "Home";
-    const parts = tab.path.replace(/\\$/, "").split("\\");
-    return parts[parts.length - 1] || tab.path;
+  let scrollEl = $state<HTMLDivElement | undefined>();
+  let canScrollLeft = $state(false);
+  let canScrollRight = $state(false);
+  let resizeObserver: ResizeObserver | undefined;
+  let scrollUpdateFrame = 0;
+  let tabItems = $derived(
+    tabs.map((tab) => ({
+      ...tab,
+      label: tab.path === "~home"
+        ? "Home"
+        : (() => {
+            const parts = tab.path.replace(/\\$/, "").split("\\");
+            return parts[parts.length - 1] || tab.path;
+          })(),
+      icon: tab.path === "~home" ? "home" : "folder",
+    }))
+  );
+  let showCloseButtons = $derived(tabs.length > 1);
+
+  function updateScrollState() {
+    if (!scrollEl) return;
+    const nextCanScrollLeft = scrollEl.scrollLeft > 1;
+    const nextCanScrollRight = scrollEl.scrollLeft < scrollEl.scrollWidth - scrollEl.clientWidth - 1;
+
+    if (nextCanScrollLeft !== canScrollLeft) canScrollLeft = nextCanScrollLeft;
+    if (nextCanScrollRight !== canScrollRight) canScrollRight = nextCanScrollRight;
   }
 
-  function getTabIcon(tab: TabState): string {
-    if (tab.path === "~home") return "home";
-    return "folder";
+  function scrollLeft() {
+    scrollEl?.scrollBy({ left: -160, behavior: 'smooth' });
   }
+
+  function scrollRight() {
+    scrollEl?.scrollBy({ left: 160, behavior: 'smooth' });
+  }
+
+  function scheduleScrollStateUpdate() {
+    cancelAnimationFrame(scrollUpdateFrame);
+    scrollUpdateFrame = requestAnimationFrame(() => {
+      updateScrollState();
+    });
+  }
+
+  $effect(() => {
+    if (!scrollEl) return;
+    resizeObserver = new ResizeObserver(updateScrollState);
+    resizeObserver.observe(scrollEl);
+    updateScrollState();
+    return () => {
+      resizeObserver?.disconnect();
+      cancelAnimationFrame(scrollUpdateFrame);
+    };
+  });
+
+  $effect(() => {
+    void tabItems.length;
+    scheduleScrollStateUpdate();
+  });
 
   const tabIconPaths: Record<string, string> = {
     home:   "M8 1L1 7h2v7h4v-4h2v4h4V7h2L8 1z",
@@ -51,45 +99,73 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="tab-bar" onmousedown={handleDragStart}>
-  <div class="tabs-scroll">
-    {#each tabs as tab (tab.id)}
-      <!-- svelte-ignore a11y_click_events_have_key_events -->
-      <div
-        class="tab"
-        class:active={tab.id === activeTabId}
-        onclick={() => onSwitchTab(tab.id)}
-        onauxclick={(e) => handleMiddleClick(e, tab.id)}
-        title={tab.path}
-        role="tab"
-        tabindex="0"
-      >
-        <span class="tab-icon">
-          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-            <path d={tabIconPaths[getTabIcon(tab)]}/>
-          </svg>
-        </span>
-        <span class="tab-label">{getTabLabel(tab)}</span>
-        {#if tabs.length > 1}
-          <button
-            class="tab-close"
-            onclick={(e) => { e.stopPropagation(); onCloseTab(tab.id); }}
-            title="Close tab"
+  <div class="tabs-region">
+    <button class="scroll-arrow" class:is-disabled={!canScrollLeft} onclick={scrollLeft} title="Scroll tabs left" disabled={!canScrollLeft} aria-disabled={!canScrollLeft}>
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6.5 2L3.5 5l3 3"/>
+      </svg>
+    </button>
+
+    <div
+      class="tabs-scroll"
+      bind:this={scrollEl}
+      onscroll={scheduleScrollStateUpdate}
+    >
+      {#each tabItems as tab, index (tab.id)}
+        <div class="tab-entry">
+          <!-- svelte-ignore a11y_click_events_have_key_events -->
+          <div
+            class="tab"
+            class:active={tab.id === activeTabId}
+            onclick={() => onSwitchTab(tab.id)}
+            onauxclick={(e) => handleMiddleClick(e, tab.id)}
+            title={tab.path}
+            role="tab"
+            tabindex="0"
           >
-            <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
-              <path d="M1 1l6 6M7 1l-6 6"/>
-            </svg>
-          </button>
-        {/if}
-      </div>
-    {/each}
+            <span class="tab-icon">
+              <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d={tabIconPaths[tab.icon]}/>
+              </svg>
+            </span>
+            <span class="tab-label">{tab.label}</span>
+            {#if showCloseButtons}
+              <button
+                class="tab-close"
+                onclick={(e) => { e.stopPropagation(); onCloseTab(tab.id); }}
+                title="Close tab"
+              >
+                <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round">
+                  <path d="M1 1l6 6M7 1l-6 6"/>
+                </svg>
+              </button>
+            {/if}
+          </div>
+
+          {#if index < tabItems.length - 1}
+            <span class="tab-divider" aria-hidden="true"></span>
+          {/if}
+        </div>
+      {/each}
+    </div>
+
+    <button class="scroll-arrow" class:is-disabled={!canScrollRight} onclick={scrollRight} title="Scroll tabs right" disabled={!canScrollRight} aria-disabled={!canScrollRight}>
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3.5 2l3 3-3 3"/>
+      </svg>
+    </button>
   </div>
+
   <button class="tab-new" onclick={onNewTab} title="New tab (Ctrl+T)">
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+    <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
       <path d="M6 1v10M1 6h10"/>
     </svg>
   </button>
+
+  <!-- Drag spacer (fills remaining space, allows window drag) -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="drag-spacer" ondblclick={handleDragSpacerDblClick}></div>
+
   {#if actions}
     {@render actions()}
   {/if}
@@ -99,58 +175,94 @@
 </div>
 
 <style>
+  /* ─── Tab bar ──────────────────────────────────────────────────────────────── */
   .tab-bar {
     display: flex;
-    align-items: stretch;
-    height: 34px;
+    align-items: center;
+    height: 38px;
+    --tab-control-height: 30px;
     background: var(--bg);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
     user-select: none;
     -webkit-user-select: none;
     overflow: hidden;
+    padding: 0 6px;
+    gap: 6px;
   }
 
+  .tabs-region {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    flex: 1 1 auto;
+    gap: 4px;
+  }
+
+  /* ─── Scrollable tab list ──────────────────────────────────────────────────── */
   .tabs-scroll {
     display: flex;
-    align-items: stretch;
+    align-items: center;
     overflow-x: auto;
+    overflow-y: hidden;
     min-width: 0;
+    flex: 1 1 auto;
     scrollbar-width: none;
+    padding: 3px 0;
   }
   .tabs-scroll::-webkit-scrollbar { display: none; }
 
+  .tab-entry {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+  }
+
+  .tab-divider {
+    width: 1px;
+    height: 16px;
+    margin: 0 4px;
+    background: color-mix(in srgb, var(--text-muted) 28%, transparent);
+    border-radius: 999px;
+    flex-shrink: 0;
+  }
+
+  /* ─── Individual tab ───────────────────────────────────────────────────────── */
   .tab {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 5px;
-    height: 100%;
-    padding: 0 10px 0 12px;
-    border: none;
-    border-right: 1px solid var(--border);
+    height: var(--tab-control-height);
+    padding: 0 12px 0 14px;
+    border: 1px solid transparent;
     background: var(--surface);
     color: var(--text-muted);
     font-size: 12px;
     font-family: inherit;
     cursor: pointer;
     white-space: nowrap;
-    max-width: 200px;
-    min-width: 80px;
-    transition: background-color 90ms ease, color 90ms ease;
-    flex-shrink: 0;
-    position: relative;
+    max-width: 320px;
+    min-width: 136px;
+    flex: 0 0 auto;
     box-sizing: border-box;
+    border-radius: 9px;
+    transition: background-color 180ms cubic-bezier(0.22, 1, 0.36, 1), color 180ms cubic-bezier(0.22, 1, 0.36, 1), border-color 180ms cubic-bezier(0.22, 1, 0.36, 1), transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
+  /* Bottom accent line on active tab */
   .tab::after {
     content: '';
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: 3px;
+    left: 10px;
+    right: 10px;
     height: 2px;
-    background: transparent;
-    transition: background 90ms ease;
+    border-radius: 999px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .tab:hover {
@@ -161,22 +273,24 @@
   .tab.active {
     background: var(--surface-high);
     color: var(--text);
+    border-color: color-mix(in srgb, var(--accent) 35%, transparent);
   }
 
   .tab.active::after {
-    background: var(--accent);
+    transform: scaleX(1);
   }
 
+  /* ─── Tab icon ─────────────────────────────────────────────────────────────── */
   .tab-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    line-height: 1;
     flex-shrink: 0;
     color: var(--text-muted);
   }
   .tab.active .tab-icon { color: var(--text-secondary); }
 
+  /* ─── Tab label ────────────────────────────────────────────────────────────── */
   .tab-label {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -186,6 +300,7 @@
   }
   .tab.active .tab-label { font-weight: 500; }
 
+  /* ─── Close button ─────────────────────────────────────────────────────────── */
   .tab-close {
     width: 16px;
     height: 16px;
@@ -203,35 +318,91 @@
     opacity: 0;
     transition: opacity 90ms ease, background-color 90ms ease, color 90ms ease;
   }
-
   .tab:hover .tab-close,
   .tab.active .tab-close { opacity: 1; }
-
   .tab-close:hover {
     background: rgba(255, 255, 255, 0.12);
     color: var(--text);
   }
 
+  /* ─── New-tab button (inside scroll, after last tab) ───────────────────────── */
   .tab-new {
-    width: 32px;
-    height: 100%;
+    width: 34px;
+    height: var(--tab-control-height);
     display: flex;
     align-items: center;
     justify-content: center;
-    border: none;
-    border-right: 1px solid var(--border);
-    background: none;
+    align-self: center;
+    flex-shrink: 0;
+    border: 1px solid transparent;
+    background: var(--surface);
     color: var(--text-muted);
     cursor: pointer;
-    flex-shrink: 0;
     font-family: inherit;
-    transition: background-color 90ms ease, color 90ms ease;
+    border-radius: 9px;
+    transition: background-color 180ms cubic-bezier(0.22, 1, 0.36, 1), color 180ms cubic-bezier(0.22, 1, 0.36, 1), border-color 180ms cubic-bezier(0.22, 1, 0.36, 1), transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
   }
-
   .tab-new:hover {
     background: var(--surface-high);
     color: var(--text-secondary);
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
   }
 
-  .drag-spacer { flex: 1; height: 100%; min-width: 16px; }
+  /* ─── Left/right scroll arrows ─────────────────────────────────────────────── */
+  .scroll-arrow {
+    width: 28px;
+    height: var(--tab-control-height);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+    flex-shrink: 0;
+    border: 1px solid transparent;
+    background: var(--surface);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-family: inherit;
+    border-radius: 8px;
+    transition: background-color 180ms cubic-bezier(0.22, 1, 0.36, 1), color 180ms cubic-bezier(0.22, 1, 0.36, 1), border-color 180ms cubic-bezier(0.22, 1, 0.36, 1), transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .scroll-arrow:hover {
+    background: var(--surface-high);
+    color: var(--text);
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+
+  .scroll-arrow.is-disabled,
+  .scroll-arrow:disabled {
+    opacity: 0.42;
+    cursor: default;
+    pointer-events: none;
+    border-color: transparent;
+  }
+
+  /* ─── Drag spacer ──────────────────────────────────────────────────────────── */
+  .drag-spacer {
+    flex: 0 0 40px;
+    height: 100%;
+    min-width: 24px;
+  }
+
+  @media (max-width: 900px) {
+    .tab-bar {
+      --tab-control-height: 28px;
+    }
+
+    .tab {
+      min-width: 112px;
+      max-width: 240px;
+    }
+
+    .tab-divider {
+      margin: 0 3px;
+    }
+
+    .drag-spacer {
+      flex-basis: 20px;
+      min-width: 12px;
+    }
+  }
 </style>
