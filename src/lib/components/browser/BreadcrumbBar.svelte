@@ -3,6 +3,7 @@
 
   interface Props {
     currentPath: string;
+    isHome?: boolean;
     canBack: boolean;
     canForward: boolean;
     onNavigate: (path: string) => void;
@@ -12,7 +13,7 @@
     onGoUp: () => void;
   }
 
-  let { currentPath, canBack, canForward, onNavigate, onGoBack, onGoForward, onPathSubmit, onGoUp }: Props = $props();
+  let { currentPath, isHome = false, canBack, canForward, onNavigate, onGoBack, onGoForward, onPathSubmit, onGoUp }: Props = $props();
 
   let isEditing = $state(false);
   let editValue = $state("");
@@ -91,16 +92,20 @@
       />
     {:else}
       <div class="segments">
-        {#each segments() as seg, i}
-          {#if i > 0}
-            <svg class="chevron" width="12" height="12" viewBox="0 0 16 16" fill="none">
-              <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          {/if}
-          <button class="segment" onclick={(e) => { e.stopPropagation(); onNavigate(seg.path); }}>
-            {seg.label}
-          </button>
-        {/each}
+        {#if isHome}
+          <span class="segment segment-home">Home</span>
+        {:else}
+          {#each segments() as seg, i}
+            {#if i > 0}
+              <svg class="chevron" width="12" height="12" viewBox="0 0 16 16" fill="none">
+                <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            {/if}
+            <button class="segment" onclick={(e) => { e.stopPropagation(); onNavigate(seg.path); }}>
+              {seg.label}
+            </button>
+          {/each}
+        {/if}
       </div>
     {/if}
   </div>
@@ -188,6 +193,14 @@
 
   .segment:last-child {
     color: var(--text-secondary);
+    cursor: default;
+    pointer-events: none;
+  }
+
+  .segment-home {
+    color: var(--text-secondary);
+    font-size: 12px;
+    padding: 2px 5px;
     cursor: default;
     pointer-events: none;
   }

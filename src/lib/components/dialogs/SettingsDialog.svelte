@@ -42,7 +42,7 @@
 </script>
 
 {#if open}
-  <Dialog title="Settings" onClose={handleClose} width="md">
+  <Dialog title="Settings" onClose={handleClose} width="xl">
     {#snippet children()}
       <div class="settings-body">
 

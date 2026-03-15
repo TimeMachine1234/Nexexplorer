@@ -6,9 +6,10 @@
   interface Props {
     onNavigate: (path: string) => void;
     onOpenFile: (path: string) => void;
+    iconSize?: number;
   }
 
-  let { onNavigate, onOpenFile }: Props = $props();
+  let { onNavigate, onOpenFile, iconSize = 128 }: Props = $props();
 
   let enabled = $derived($homeSettings.enabledSections);
 
@@ -60,7 +61,7 @@
     {#if isEnabled("quickAccess")}
       <section class="home-section">
         <h3 class="section-title">Quick Access</h3>
-        <QuickAccessGrid {onNavigate} />
+        <QuickAccessGrid {onNavigate} {iconSize} />
       </section>
     {/if}
 

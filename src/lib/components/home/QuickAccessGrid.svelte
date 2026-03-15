@@ -4,9 +4,17 @@
 
   interface Props {
     onNavigate: (path: string) => void;
+    iconSize?: number;
   }
 
-  let { onNavigate }: Props = $props();
+  let { onNavigate, iconSize = 128 }: Props = $props();
+
+  // Scale icon container (32px at default 128, range 16–64)
+  let iconBoxSize = $derived(Math.round(iconSize / 4));
+  // Scale SVG inside (16px at default 128, range 8–32)
+  let svgSize = $derived(Math.round(iconSize / 8));
+  // Scale grid column min-width (~88px at default 128)
+  let colMin = $derived(Math.round(iconSize * 0.7));
 
   // SVG icon paths (16x16 viewBox)
   const iconPaths: Record<string, string> = {
@@ -52,11 +60,11 @@
   let pins = $derived($pinnedFolders.filter(p => p.path !== '~home'));
 </script>
 
-<div class="qa-grid">
+<div class="qa-grid" style="grid-template-columns: repeat(auto-fill, minmax({colMin}px, 1fr));">
   {#each items as item}
     <button class="qa-card" onclick={() => onNavigate(item.path)} title={item.path}>
-      <span class="qa-icon">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+      <span class="qa-icon" style="width:{iconBoxSize}px; height:{iconBoxSize}px;">
+        <svg width={svgSize} height={svgSize} viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
           <path d={iconPaths[item.iconKey]}/>
         </svg>
       </span>
@@ -66,8 +74,8 @@
 
   {#each pins as pin}
     <button class="qa-card" onclick={() => onNavigate(pin.path)} title={pin.path}>
-      <span class="qa-icon">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+      <span class="qa-icon" style="width:{iconBoxSize}px; height:{iconBoxSize}px;">
+        <svg width={svgSize} height={svgSize} viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
           <path d={iconPaths.pin}/>
         </svg>
       </span>

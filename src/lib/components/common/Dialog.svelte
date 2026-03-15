@@ -7,7 +7,7 @@
   interface Props {
     title?: string;
     onClose?: () => void;
-    width?: "sm" | "md" | "lg";
+    width?: "sm" | "md" | "lg" | "xl";
     children?: Snippet;
     actions?: Snippet;
     theme?: Theme;
@@ -18,7 +18,7 @@
   let { title, onClose, width = "md", children, actions, theme, customColor, radius,
 }: Props = $props();
 
-  const widthMap = { sm: "400px", md: "480px", lg: "560px" };
+  const widthMap = { sm: "400px", md: "480px", lg: "560px", xl: "660px" };
 
   function handleBackdropClick() { onClose?.(); }
   function handleKeydown(e: KeyboardEvent) { if (e.key === "Escape") onClose?.(); }

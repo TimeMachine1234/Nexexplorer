@@ -242,7 +242,7 @@
     min-height: 0;
   }
 
-  .sidebar.resizing { user-select: none; }
+  .sidebar.resizing { user-select: none; transition: none; }
 
   .resize-handle {
     position: absolute;

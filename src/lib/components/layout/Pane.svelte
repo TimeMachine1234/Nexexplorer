@@ -525,6 +525,7 @@
     <BreadcrumbBar
       bind:this={breadcrumbBar}
       currentPath={isHome ? "" : tabData.path}
+      isHome={isHome}
       canBack={canTabGoBack(tabData)}
       canForward={canTabGoForward(tabData)}
       onNavigate={(p) => navigateTo(p)}
@@ -538,6 +539,7 @@
       <HomeView
         onNavigate={(p) => navigateTo(p)}
         onOpenFile={openFile}
+        iconSize={$settings.gridIconSize}
       />
     {:else}
     <div
