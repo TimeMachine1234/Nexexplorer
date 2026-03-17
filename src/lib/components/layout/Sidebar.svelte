@@ -4,6 +4,7 @@
   import SidebarSection from "./SidebarSection.svelte";
   import { pinnedFolders } from "../../stores/sidebar";
   import { HOME_PATH } from "../../stores/panes";
+  import { settings } from "../../stores/settings";
 
   interface Props {
     onNavigate: (path: string) => void;
@@ -117,7 +118,7 @@
   }
 </script>
 
-<aside class="sidebar" class:resizing={isResizing} class:collapsed={isCollapsed} style="width: {isCollapsed ? COLLAPSED_WIDTH : sidebarWidth}px; min-width: {isCollapsed ? COLLAPSED_WIDTH : MIN_WIDTH}px; max-width: {isCollapsed ? COLLAPSED_WIDTH : MAX_WIDTH}px; border-right-width: {isCollapsed ? 0 : 1}px;">
+<aside class="sidebar" class:resizing={isResizing} class:collapsed={isCollapsed} class:floating={$settings.roundCorners && !isCollapsed} style="width: {isCollapsed ? COLLAPSED_WIDTH : sidebarWidth}px; min-width: {isCollapsed ? COLLAPSED_WIDTH : MIN_WIDTH}px; max-width: {isCollapsed ? COLLAPSED_WIDTH : MAX_WIDTH}px; border-right-width: {isCollapsed ? 0 : 1}px;">
   {#if !isCollapsed}
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="resize-handle" onmousedown={onResizeStart}></div>
@@ -234,6 +235,16 @@
     padding: 0;
     overflow: visible;
     background: transparent;
+  }
+
+  .sidebar.floating {
+    height: auto;
+    margin: 8px 0 8px 8px;
+    border-radius: var(--sq-xl);
+    border: 1px solid var(--border-active);
+    border-right-width: 1px !important;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
   }
 
   .sidebar-content {

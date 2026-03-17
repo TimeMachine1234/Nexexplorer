@@ -174,12 +174,12 @@
    Surfaces become frosted-glass; works best over imagery.
    ========================================================= */
 [data-theme="glass"] {
-  --bg: rgba(10, 10, 18, 0.55);
+  --bg: transparent;
   --surface: rgba(255, 255, 255, 0.06);
   --surface-high: rgba(255, 255, 255, 0.09);
   --surface-raised: rgba(255, 255, 255, 0.12);
-  --surface-float: rgba(20, 20, 30, 0.55);
-  --surface-overlay: rgba(10, 10, 20, 0.70);
+  --surface-float: rgba(20, 20, 28, 0.55);
+  --surface-overlay: rgba(10, 10, 18, 0.70);
 
   --border: rgba(255, 255, 255, 0.10);
   --border-subtle: rgba(255, 255, 255, 0.05);
@@ -194,8 +194,8 @@
 
 [data-theme="glass"] .glass,
 [data-theme="glass"] .surface {
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: saturate(140%);
+  -webkit-backdrop-filter: saturate(140%);
 }
 
 /* =========================================================
@@ -225,7 +225,7 @@ html, body, #app {
   height: 100%;
   width: 100%;
   overflow: hidden;
-  background-color: var(--bg);
+  background-color: transparent;
   color: var(--text);
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   font-size: 13px;
@@ -340,7 +340,7 @@ html[data-theme="glass"] .qa-card {
     --angle-1 500ms ease;
 }
 
-/* ── Glass displacement filter layer (::before, behind content) ── */
+/* ── Clean glass refraction layer (::before, behind content) ── */
 html[data-theme="glass"] .nav-item::before,
 html[data-theme="glass"] .segment::before,
 html[data-theme="glass"] .file-item::before,
@@ -353,21 +353,7 @@ html[data-theme="glass"] .qa-card::before {
   inset: 0;
   z-index: -1;
   border-radius: inherit;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   pointer-events: none;
-  transition: filter var(--anim--hover-time) var(--anim--hover-ease);
-}
-
-/* Activate liquid warp on hover */
-html[data-theme="glass"] .nav-item:hover::before,
-html[data-theme="glass"] .segment:hover::before,
-html[data-theme="glass"] .file-item:hover::before,
-html[data-theme="glass"] .btn:hover::before,
-html[data-theme="glass"] .tab:hover::before,
-html[data-theme="glass"] .toggle:hover::before,
-html[data-theme="glass"] .qa-card:hover::before {
-  filter: url(#lg-dist) saturate(160%);
 }
 
 /* ── Dark glass surface (default for our dark theme) ────── */

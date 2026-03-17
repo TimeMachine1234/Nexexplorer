@@ -31,12 +31,18 @@ unsafe extern "system" fn snap_wnd_proc(
     lparam: windows_sys::Win32::Foundation::LPARAM,
 ) -> windows_sys::Win32::Foundation::LRESULT {
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        GWLP_WNDPROC, WM_NCHITTEST, WM_NCDESTROY, HTMAXBUTTON,
+        GWLP_WNDPROC, WM_NCHITTEST, WM_NCDESTROY, WM_NCACTIVATE, HTMAXBUTTON,
         SetWindowLongPtrW,
     };
     use windows_sys::Win32::Graphics::Gdi::ScreenToClient;
 
     let orig = ORIG_WNDPROC.load(Ordering::Relaxed);
+
+    // Prevent Windows from repainting the non-client area on focus change.
+    // Without this, acrylic darkens/blurs more when the window loses focus.
+    if msg == WM_NCACTIVATE {
+        return 1;
+    }
 
     if msg == WM_NCHITTEST {
         let x = (lparam & 0xFFFF) as i16 as i32;

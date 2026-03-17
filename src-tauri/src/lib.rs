@@ -14,6 +14,14 @@ pub fn run() {
         .setup(|app| {
             if let Some(win) = app.get_webview_window("main") {
                 win32_snap::install_snap_hook(&win);
+
+                #[cfg(target_os = "windows")]
+                {
+                    use window_vibrancy::apply_acrylic;
+                    if let Err(e) = apply_acrylic(&win, Some((18, 18, 18, 125))) {
+                        eprintln!("Could not apply acrylic effect (non-fatal): {e}");
+                    }
+                }
             }
             Ok(())
         })

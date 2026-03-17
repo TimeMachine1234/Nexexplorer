@@ -37,6 +37,7 @@ windows-sys = { version = "0.48", features = [
   "Win32_Graphics_Gdi",
 ] }
 raw-window-handle = "0.6"
+window-vibrancy = "0.5"
 
 [profile.release]
 opt-level = "s"
