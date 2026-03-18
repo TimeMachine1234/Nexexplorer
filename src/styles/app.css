@@ -110,9 +110,9 @@
   --transition-slow: 250ms var(--ease-out);
 
   /* === Blur === */
-  --blur-sm: blur(8px);
-  --blur-md: blur(16px);
-  --blur-lg: blur(24px);
+  --blur-sm: blur(12px);
+  --blur-md: blur(24px);
+  --blur-lg: blur(40px);
 
   /* === Z-index layers === */
   --z-base: 1;
@@ -366,15 +366,14 @@ html[data-theme="glass"] .toggle,
 html[data-theme="glass"] .qa-card {
   background: linear-gradient(
     -75deg,
-    rgba(0, 0, 0, 0.05),
-    rgba(0, 0, 0, 0.2),
-    rgba(0, 0, 0, 0.05)
+    rgba(255, 255, 255, 0.03),
+    rgba(255, 255, 255, 0.07),
+    rgba(255, 255, 255, 0.03)
   );
   box-shadow:
-    inset 0 0.125em 0.125em rgba(254, 254, 254, 0.05),
-    inset 0 -0.125em 0.125em rgba(0, 0, 0, 0.5),
-    0 0.25em 0.125em -0.125em rgba(254, 254, 254, 0.2),
-    0 0 0.1em 0.25em inset rgba(0, 0, 0, 0.2);
+    inset 0 0.125em 0.125em rgba(254, 254, 254, 0.07),
+    inset 0 -0.125em 0.125em rgba(0, 0, 0, 0.2),
+    0 0.25em 0.125em -0.125em rgba(254, 254, 254, 0.15);
 }
 
 /* ── Conic-gradient border ring ──────────────────────────── */
@@ -426,10 +425,9 @@ html[data-theme="glass"] .tab:hover,
 html[data-theme="glass"] .toggle:hover,
 html[data-theme="glass"] .qa-card:hover {
   box-shadow:
-    inset 0 0.125em 0.125em rgba(254, 254, 254, 0.05),
-    inset 0 -0.125em 0.125em rgba(0, 0, 0, 0.5),
-    0 0.15em 0.05em -0.1em rgba(254, 254, 254, 0.25),
-    0 0 0.05em 0.1em inset rgba(0, 0, 0, 0.5);
+    inset 0 0.125em 0.125em rgba(254, 254, 254, 0.08),
+    inset 0 -0.125em 0.125em rgba(0, 0, 0, 0.25),
+    0 0.15em 0.05em -0.1em rgba(254, 254, 254, 0.2);
   transform: translateY(-0.5px);
 }
 

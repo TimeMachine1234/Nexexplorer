@@ -115,9 +115,9 @@
     position: absolute;
     inset: 0;
     z-index: 0;
-    -webkit-backdrop-filter: blur(4px);
-    backdrop-filter: blur(4px);
-    filter: url(#lg-dist) saturate(150%);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    filter: url(#lg-dist) saturate(160%);
     isolation: isolate;
   }
 
@@ -215,30 +215,28 @@
     pointer-events: auto;
     z-index: 3;
     border-radius: var(--roundness);
-    backdrop-filter: blur(clamp(1px, 0.125em, 4px));
-    -webkit-backdrop-filter: blur(clamp(1px, 0.125em, 4px));
+    backdrop-filter: blur(clamp(8px, 1em, 24px));
+    -webkit-backdrop-filter: blur(clamp(8px, 1em, 24px));
     transition: all var(--anim--hover-time) var(--anim--hover-ease);
   }
 
   /* Dark surface */
   .lg-content.lg-dark {
     -webkit-tap-highlight-color: rgba(254, 254, 254, 0);
-    background: linear-gradient(-75deg, rgba(0, 0, 0, 0.05), rgba(0, 0, 0, 0.2), rgba(0, 0, 0, 0.05));
+    background: linear-gradient(-75deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.03));
     box-shadow:
-      inset 0 0.125em 0.125em rgba(254, 254, 254, 0.05),
-      inset 0 -0.125em 0.125em rgba(0, 0, 0, 0.5),
-      0 0.25em 0.125em -0.125em rgba(254, 254, 254, 0.2),
-      0 0 0.1em 0.25em inset rgba(0, 0, 0, 0.2),
+      inset 0 0.125em 0.125em rgba(254, 254, 254, 0.07),
+      inset 0 -0.125em 0.125em rgba(0, 0, 0, 0.2),
+      0 0.25em 0.125em -0.125em rgba(254, 254, 254, 0.15),
       0 0 0 0 rgba(0, 0, 0, 1);
   }
 
   /* Dark surface hover */
   .lg-content.lg-dark:hover {
     box-shadow:
-      inset 0 0.125em 0.125em rgba(254, 254, 254, 0.05),
-      inset 0 -0.125em 0.125em rgba(0, 0, 0, 0.5),
-      0 0.15em 0.05em -0.1em rgba(254, 254, 254, 0.25),
-      0 0 0.05em 0.1em inset rgba(0, 0, 0, 0.5),
+      inset 0 0.125em 0.125em rgba(254, 254, 254, 0.08),
+      inset 0 -0.125em 0.125em rgba(0, 0, 0, 0.25),
+      0 0.15em 0.05em -0.1em rgba(254, 254, 254, 0.2),
       0 0 0 0 rgba(0, 0, 0, 1);
   }
 
@@ -288,7 +286,7 @@
     background: linear-gradient(
       var(--angle-2),
       rgba(0, 0, 0, 0) 0%,
-      rgba(0, 0, 0, 0.5) 80% 90%,
+      rgba(0, 0, 0, 0.12) 80% 90%,
       rgba(0, 0, 0, 0) 105%
     );
   }
