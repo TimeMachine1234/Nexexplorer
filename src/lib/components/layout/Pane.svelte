@@ -13,6 +13,7 @@
   import TextInput from "../common/TextInput.svelte";
   import EmptyState from "../common/EmptyState.svelte";
   import PaneFileOps from "./PaneFileOps.svelte";
+  import ActionToolbar from "./ActionToolbar.svelte";
   import HomeView from "../home/HomeView.svelte";
   import { HOME_PATH } from "../../stores/home";
   import { settings } from "../../stores/settings";
@@ -533,6 +534,19 @@
       onGoForward={handleGoForward}
       onPathSubmit={(p) => navigateTo(p)}
       onGoUp={handleGoUp}
+    />
+    {/if}
+    {#if !isHome}
+    <ActionToolbar
+      selectedCount={selectedPaths.size}
+      canPaste={$clipboard !== null}
+      onNewFile={() => fileOps?.doNewFile()}
+      onNewFolder={() => fileOps?.doNewFolder()}
+      onCopy={() => fileOps?.doCopy()}
+      onCut={() => fileOps?.doCut()}
+      onPaste={() => fileOps?.doPaste()}
+      onRename={() => { if (selectedPaths.size === 1) startRename([...selectedPaths][0]); }}
+      onDelete={() => fileOps?.doDelete(false)}
     />
     {/if}
     {#if isHome}
