@@ -21,6 +21,13 @@
     min-width: 0;
   }
 
+  :global(.rounded) .status-bar {
+    flex: 0 auto;
+    margin: 4px 0 4px 8px;
+    border-radius: var(--sq-full);
+    border: 1px solid var(--border);
+  }
+
   .item-count {
     font-size: 11px;
     color: var(--text-muted);

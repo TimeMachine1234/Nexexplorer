@@ -195,6 +195,25 @@
     padding: 0 6px;
   }
 
+  :global(.rounded) .ff-widget {
+    margin: 4px 8px 4px 0;
+    border-radius: var(--sq-full);
+    border: 1px solid var(--border-active);
+    background: var(--surface);
+    padding: 0 6px;
+  }
+
+  :global(.rounded) .ff-search {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+  }
+
+  :global(.rounded) .ff-filter-btn {
+    border: none;
+    background: transparent;
+  }
+
   .ff-search {
     display: flex;
     align-items: center;

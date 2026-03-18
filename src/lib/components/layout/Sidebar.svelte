@@ -247,6 +247,10 @@
     overflow: hidden;
   }
 
+  :global([data-theme="glass"]) .sidebar.floating {
+    box-shadow: none;
+  }
+
   .sidebar-content {
     display: flex;
     flex-direction: column;

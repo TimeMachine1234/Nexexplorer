@@ -142,6 +142,13 @@
     z-index: 1;
   }
 
+  :global(.rounded) .file-list-header {
+    margin: 0 8px 2px;
+    border-radius: var(--sq-md);
+    border: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
   .col-icon-h {
     width: 22px;
     flex-shrink: 0;

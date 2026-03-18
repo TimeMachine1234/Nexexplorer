@@ -64,6 +64,7 @@
 
     // Round corners
     const sq = s.roundCorners;
+    root.classList.toggle('rounded', sq);
     root.style.setProperty('--sq-xs',   sq ? '4px'    : '0px');
     root.style.setProperty('--sq-sm',   sq ? '6px'    : '0px');
     root.style.setProperty('--sq-md',   sq ? '10px'   : '0px');

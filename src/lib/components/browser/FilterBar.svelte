@@ -80,6 +80,14 @@
     gap: 6px;
   }
 
+  :global(.rounded) .filter-bar {
+    margin: 4px 8px;
+    border-radius: var(--sq-full);
+    border: 1px solid var(--border-active);
+    border-top: 1px solid var(--border-active);
+    border-bottom: 1px solid var(--border-active);
+  }
+
   .filter-icon {
     flex-shrink: 0;
     color: var(--text-muted);

@@ -658,6 +658,12 @@
     border-top: 1px solid var(--border);
   }
 
+  :global(.rounded) .bottom-bar {
+    background: transparent;
+    border-top: none;
+    justify-content: space-between;
+  }
+
   .file-area {
     flex: 1;
     overflow: hidden;

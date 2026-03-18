@@ -123,6 +123,13 @@
     gap: 4px;
   }
 
+  :global(.rounded) .breadcrumb-bar {
+    margin: 4px 8px;
+    border-radius: var(--sq-xl);
+    border: 1px solid var(--border-active);
+    border-bottom: 1px solid var(--border-active);
+  }
+
   .path-area {
     flex: 1;
     min-width: 0;
