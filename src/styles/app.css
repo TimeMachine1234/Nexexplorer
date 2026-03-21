@@ -170,32 +170,32 @@
 }
 
 /* =========================================================
-   GLASS / TRANSLUCENT THEME — [data-theme="glass"]
-   Surfaces become frosted-glass; works best over imagery.
+   BLUR THEME — [data-theme="glass"]
+   Opaque dark surfaces with tasteful blur on floating layers.
    ========================================================= */
 [data-theme="glass"] {
-  --bg: transparent;
-  --surface: rgba(255, 255, 255, 0.06);
-  --surface-high: rgba(255, 255, 255, 0.09);
-  --surface-raised: rgba(255, 255, 255, 0.12);
-  --surface-float: rgba(20, 20, 28, 0.55);
-  --surface-overlay: rgba(10, 10, 18, 0.70);
+  --bg: #0f0f14;
+  --surface: #17171e;
+  --surface-high: #1e1e27;
+  --surface-raised: #252530;
+  --surface-float: rgba(20, 20, 28, 0.93);
+  --surface-overlay: rgba(10, 10, 16, 0.90);
 
-  --border: rgba(255, 255, 255, 0.10);
-  --border-subtle: rgba(255, 255, 255, 0.05);
-  --border-active: rgba(255, 255, 255, 0.18);
-  --border-strong: rgba(255, 255, 255, 0.25);
+  --border: rgba(255, 255, 255, 0.07);
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --border-active: rgba(255, 255, 255, 0.13);
+  --border-strong: rgba(255, 255, 255, 0.22);
 
   --text: #e8e8f2;
   --text-secondary: #aaaac0;
   --text-muted: #686880;
-  --shadow-float: 0 16px 56px rgba(0, 0, 0, 0.60), 0 4px 16px rgba(0, 0, 0, 0.40), 0 1px 4px rgba(0, 0, 0, 0.30);
+  --shadow-float: 0 16px 56px rgba(0, 0, 0, 0.70), 0 4px 16px rgba(0, 0, 0, 0.50), 0 1px 4px rgba(0, 0, 0, 0.35);
 }
 
 [data-theme="glass"] .glass,
 [data-theme="glass"] .surface {
-  backdrop-filter: saturate(140%);
-  -webkit-backdrop-filter: saturate(140%);
+  backdrop-filter: blur(20px) saturate(120%);
+  -webkit-backdrop-filter: blur(20px) saturate(120%);
 }
 
 /* =========================================================
@@ -272,11 +272,11 @@ input, textarea {
   user-select: text;
 }
 
-/* === Utility: frosted glass surface === */
+/* === Utility: blurred surface === */
 .glass {
   background: var(--surface-float);
-  backdrop-filter: var(--blur-md) saturate(180%);
-  -webkit-backdrop-filter: var(--blur-md) saturate(180%);
+  backdrop-filter: blur(20px) saturate(120%);
+  -webkit-backdrop-filter: blur(20px) saturate(120%);
 }
 
 /* === Utility: inner top highlight (macOS style) === */
@@ -284,229 +284,3 @@ input, textarea {
   box-shadow: var(--shadow-inset);
 }
 
-/* =========================================================
-   @PROPERTY — enables smooth conic-gradient angle animation
-   ========================================================= */
-@property --angle-1 {
-  syntax: '<angle>';
-  inherits: false;
-  initial-value: -75deg;
-}
-
-@property --angle-2 {
-  syntax: '<angle>';
-  inherits: false;
-  initial-value: -45deg;
-}
-
-/* =========================================================
-   LIQUID GLASS — global tokens & keyframes
-   ========================================================= */
-:root {
-  --anim--hover-time: 400ms;
-  --anim--hover-ease: cubic-bezier(0.25, 1, 0.5, 1);
-  --lg-border-w: clamp(1px, 0.0625em, 4px);
-}
-
-@keyframes rotate-gradient {
-  0%   { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* =========================================================
-   LIQUID GLASS — CSS-only treatment for interactive elements
-   Applied ONLY in [data-theme="glass"].
-   Uses html[] prefix for specificity over Svelte scoped CSS.
-
-   These are dark-mode values (correct for dark backgrounds).
-   Light mode overrides follow at the bottom.
-   ========================================================= */
-
-/* ── Stacking context setup ─────────────────────────────── */
-html[data-theme="glass"] .nav-item,
-html[data-theme="glass"] .segment,
-html[data-theme="glass"] .file-item,
-html[data-theme="glass"] .btn,
-html[data-theme="glass"] .tab,
-html[data-theme="glass"] .toggle,
-html[data-theme="glass"] .qa-card {
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-  transition:
-    background var(--anim--hover-time) var(--anim--hover-ease),
-    box-shadow  var(--anim--hover-time) var(--anim--hover-ease),
-    transform 180ms var(--anim--hover-ease),
-    --angle-1 500ms ease;
-}
-
-/* ── Clean glass refraction layer (::before, behind content) ── */
-html[data-theme="glass"] .nav-item::before,
-html[data-theme="glass"] .segment::before,
-html[data-theme="glass"] .file-item::before,
-html[data-theme="glass"] .btn::before,
-html[data-theme="glass"] .tab::before,
-html[data-theme="glass"] .toggle::before,
-html[data-theme="glass"] .qa-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  pointer-events: none;
-}
-
-/* ── Dark glass surface (default for our dark theme) ────── */
-html[data-theme="glass"] .nav-item,
-html[data-theme="glass"] .segment,
-html[data-theme="glass"] .file-item,
-html[data-theme="glass"] .btn,
-html[data-theme="glass"] .tab,
-html[data-theme="glass"] .toggle,
-html[data-theme="glass"] .qa-card {
-  background: linear-gradient(
-    -75deg,
-    rgba(255, 255, 255, 0.03),
-    rgba(255, 255, 255, 0.07),
-    rgba(255, 255, 255, 0.03)
-  );
-  box-shadow:
-    inset 0 0.125em 0.125em rgba(254, 254, 254, 0.07),
-    inset 0 -0.125em 0.125em rgba(0, 0, 0, 0.2),
-    0 0.25em 0.125em -0.125em rgba(254, 254, 254, 0.15);
-}
-
-/* ── Conic-gradient border ring ──────────────────────────── */
-html[data-theme="glass"] .nav-item::after,
-html[data-theme="glass"] .segment::after,
-html[data-theme="glass"] .file-item::after,
-html[data-theme="glass"] .btn::after,
-html[data-theme="glass"] .toggle::after,
-html[data-theme="glass"] .qa-card::after {
-  content: '';
-  position: absolute;
-  z-index: 1;
-  inset: 0;
-  border-radius: inherit;
-  width: calc(100% + var(--lg-border-w));
-  height: calc(100% + var(--lg-border-w));
-  top: calc(0% - var(--lg-border-w) / 2);
-  left: calc(0% - var(--lg-border-w) / 2);
-  padding: var(--lg-border-w);
-  box-sizing: border-box;
-  background:
-    conic-gradient(
-      from var(--angle-1) at 50% 50%,
-      rgba(254, 254, 254, 0.5),
-      rgba(254, 254, 254, 0) 5% 40%,
-      rgba(254, 254, 254, 0.5) 50%,
-      rgba(254, 254, 254, 0) 60% 95%,
-      rgba(254, 254, 254, 0.5)
-    ),
-    linear-gradient(180deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5));
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  -webkit-mask-composite: xor;
-  pointer-events: none;
-  transition: --angle-1 500ms ease;
-}
-
-/* ── Hover: rotate border + tighten shadow ──────────────── */
-html[data-theme="glass"] .nav-item:hover,
-html[data-theme="glass"] .segment:hover,
-html[data-theme="glass"] .file-item:hover,
-html[data-theme="glass"] .btn:hover,
-html[data-theme="glass"] .tab:hover,
-html[data-theme="glass"] .toggle:hover,
-html[data-theme="glass"] .qa-card:hover {
-  box-shadow:
-    inset 0 0.125em 0.125em rgba(254, 254, 254, 0.08),
-    inset 0 -0.125em 0.125em rgba(0, 0, 0, 0.25),
-    0 0.15em 0.05em -0.1em rgba(254, 254, 254, 0.2);
-  transform: translateY(-0.5px);
-}
-
-html[data-theme="glass"] .nav-item:hover::after,
-html[data-theme="glass"] .segment:hover::after,
-html[data-theme="glass"] .file-item:hover::after,
-html[data-theme="glass"] .btn:hover::after,
-html[data-theme="glass"] .toggle:hover::after,
-html[data-theme="glass"] .qa-card:hover::after {
-  --angle-1: -125deg;
-}
-
-/* ── Active (pressed) ────────────────────────────────────── */
-html[data-theme="glass"] .btn:active,
-html[data-theme="glass"] .nav-item:active,
-html[data-theme="glass"] .file-item:active,
-html[data-theme="glass"] .tab:active,
-html[data-theme="glass"] .qa-card:active,
-html[data-theme="glass"] .segment:active {
-  transform: translateY(0.5px) scale(0.985);
-  box-shadow:
-    inset 0 0.125em 0.125em rgba(254, 254, 254, 0.05),
-    inset 0 -0.125em 0.125em rgba(0, 0, 0, 0.5),
-    0 0.125em 0.125em -0.125em rgba(254, 254, 254, 0.2),
-    0 0 0.1em 0.25em inset rgba(0, 0, 0, 0.2),
-    0 0.225em 0.05em 0 rgba(254, 254, 254, 0.05),
-    0 0.25em 0 0 rgba(0, 0, 0, 0.75),
-    inset 0 0.25em 0.05em 0 rgba(254, 254, 254, 0.15);
-}
-
-/* ── Active nav/tab glass accent ─────────────────────────── */
-html[data-theme="glass"] .nav-item.active,
-html[data-theme="glass"] .tab.active {
-  background: linear-gradient(
-    -75deg,
-    rgba(14, 165, 233, 0.08),
-    rgba(14, 165, 233, 0.22),
-    rgba(14, 165, 233, 0.08)
-  );
-  box-shadow:
-    inset 0 0.125em 0.125em rgba(14, 165, 233, 0.1),
-    inset 0 -0.125em 0.125em rgba(0, 0, 0, 0.4);
-}
-
-/* ── Text shadow ─────────────────────────────────────────── */
-html[data-theme="glass"] .nav-item,
-html[data-theme="glass"] .segment,
-html[data-theme="glass"] .file-item,
-html[data-theme="glass"] .btn,
-html[data-theme="glass"] .tab,
-html[data-theme="glass"] .qa-card {
-  text-shadow: 0em 0.12em 0.05em rgba(254, 254, 254, 0.1);
-}
-
-html[data-theme="glass"] .nav-item:hover,
-html[data-theme="glass"] .segment:hover,
-html[data-theme="glass"] .file-item:hover,
-html[data-theme="glass"] .btn:hover,
-html[data-theme="glass"] .tab:hover,
-html[data-theme="glass"] .qa-card:hover {
-  text-shadow: 0.025em 0.025em 0.025em rgba(254, 254, 254, 0.12);
-}
-
-/* ── Touch devices: disable angle animation ─────────────── */
-@media (hover: none) and (pointer: coarse) {
-  html[data-theme="glass"] .nav-item::after,
-  html[data-theme="glass"] .segment::after,
-  html[data-theme="glass"] .file-item::after,
-  html[data-theme="glass"] .btn::after,
-  html[data-theme="glass"] .toggle::after,
-  html[data-theme="glass"] .qa-card::after {
-    --angle-1: -75deg;
-  }
-  html[data-theme="glass"] .btn:active,
-  html[data-theme="glass"] .nav-item:active,
-  html[data-theme="glass"] .file-item:active,
-  html[data-theme="glass"] .tab:active,
-  html[data-theme="glass"] .qa-card:active,
-  html[data-theme="glass"] .segment:active {
-    transform: none;
-  }
-}
