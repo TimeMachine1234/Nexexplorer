@@ -1,0 +1,68 @@
+name: Build – Windows ARM64
+
+on:
+  push:
+    branches: [main, uichanges]
+    paths:
+      - 'src-tauri/**'
+      - 'src/**'
+      - 'package.json'
+      - '.github/workflows/build-arm64.yml'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-arm64:
+    name: Windows ARM64 (aarch64-pc-windows-msvc)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Rust stable + ARM64 target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-pc-windows-msvc
+
+      - name: Install MSVC ARM64 build tools
+        shell: pwsh
+        run: |
+          $vsPath = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
+            -latest -property installationPath
+          & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vs_installer.exe" modify `
+            --installPath "$vsPath" `
+            --add Microsoft.VisualStudio.Component.VC.Tools.ARM64 `
+            --quiet --norestart
+        continue-on-error: true
+
+      - name: Cache Rust build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: arm64-windows
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Build Tauri app (ARM64)
+        run: npm run tauri build -- --target aarch64-pc-windows-msvc
+        env:
+          CARGO_TARGET_AARCH64_PC_WINDOWS_MSVC_LINKER: lld-link
+
+      - name: Upload ARM64 installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nexexplorer-arm64-windows
+          path: |
+            src-tauri/target/aarch64-pc-windows-msvc/release/bundle/nsis/*.exe
+            src-tauri/target/aarch64-pc-windows-msvc/release/bundle/msi/*.msi
+          if-no-files-found: warn
+          retention-days: 30

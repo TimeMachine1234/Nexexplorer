@@ -95,7 +95,7 @@ pub(crate) fn index_directory_batch(
 
     conn.execute_batch("BEGIN").ok();
 
-    let mut content_candidates: Vec<(String, String, String)> = Vec::new();
+    let mut content_candidates: Vec<(String, String, String)> = Vec::with_capacity(1024);
 
     for entry in walker {
         if cancel.load(std::sync::atomic::Ordering::Relaxed) {
@@ -112,8 +112,8 @@ pub(crate) fn index_directory_batch(
         };
 
         let path = entry.path();
-        let path_str = path.to_string_lossy().to_string();
-        let name = entry.file_name().to_string_lossy().to_string();
+        let path_str = path.to_string_lossy().into_owned();
+        let name = entry.file_name().to_string_lossy().into_owned();
         let name_lower = name.to_lowercase();
         let is_dir = entry.file_type().is_dir();
         let extension = path
@@ -208,10 +208,10 @@ pub(crate) fn index_directory_batch(
 }
 
 pub(crate) fn upsert_single(conn: &Connection, path: &Path) {
-    let path_str = path.to_string_lossy().to_string();
+    let path_str = path.to_string_lossy().into_owned();
     let name = path
         .file_name()
-        .map(|n| n.to_string_lossy().to_string())
+        .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_default();
     let name_lower = name.to_lowercase();
     let extension = path
@@ -246,7 +246,7 @@ pub(crate) fn upsert_single(conn: &Connection, path: &Path) {
 }
 
 pub(crate) fn remove_single(conn: &Connection, path: &Path) {
-    let path_str = path.to_string_lossy().to_string();
+    let path_str = path.to_string_lossy().into_owned();
     let like_pattern = format!("{}\\%", path_str);
     conn.execute(
         "DELETE FROM file_content WHERE path = ?1 OR path LIKE ?2",

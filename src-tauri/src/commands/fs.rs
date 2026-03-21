@@ -33,7 +33,7 @@ pub fn list_directory(path: String) -> Result<Vec<FileEntry>, String> {
         return Err(format!("Path is not a directory: {}", path));
     }
 
-    let mut entries = Vec::new();
+    let mut entries = Vec::with_capacity(256);
 
     let read_dir = fs::read_dir(dir_path).map_err(|e| format!("Cannot read directory: {}", e))?;
 
@@ -48,7 +48,7 @@ pub fn list_directory(path: String) -> Result<Vec<FileEntry>, String> {
             Err(_) => continue,
         };
 
-        let name = entry.file_name().to_string_lossy().to_string();
+        let name = entry.file_name().to_string_lossy().into_owned();
 
         let modified = metadata
             .modified()

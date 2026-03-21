@@ -40,8 +40,9 @@ pub(crate) fn init_db(conn: &Connection) {
         "
         PRAGMA journal_mode = WAL;
         PRAGMA synchronous = NORMAL;
-        PRAGMA cache_size = -8000;
+        PRAGMA cache_size = -65536;
         PRAGMA temp_store = MEMORY;
+        PRAGMA mmap_size = 536870912;
         ",
     )
     .ok();
@@ -196,7 +197,7 @@ pub(crate) fn read_content_snippet(path: &Path) -> Option<String> {
 
     // Try UTF-8, fall back to lossy
     let text = String::from_utf8(buf.clone())
-        .unwrap_or_else(|_| String::from_utf8_lossy(&buf).to_string());
+        .unwrap_or_else(|_| String::from_utf8_lossy(&buf).into_owned());
 
     // Skip if it looks binary (too many null bytes or control chars)
     let control_count = text.chars().filter(|c| c.is_control() && *c != '\n' && *c != '\r' && *c != '\t').count();

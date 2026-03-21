@@ -1,0 +1,25 @@
+# Cargo configuration for NexExplorer
+# Covers both x86_64 (primary) and aarch64 (ARM64) Windows targets.
+
+# ---------------------------------------------------------------------------
+# aarch64-pc-windows-msvc (Windows ARM64)
+# ---------------------------------------------------------------------------
+[target.aarch64-pc-windows-msvc]
+rustflags = [
+  # Optimise for the native ARM64 core when building locally.
+  # CI can override with a specific cpu (e.g. "cortex-a78") if needed.
+  "-C", "target-cpu=native",
+  # NEON is mandatory on ARMv8-A (Windows on ARM) — explicit flag prevents
+  # any accidental scalar fallback if the toolchain autodetect fails.
+  # NEON, FP16, and dot-product are available on all Snapdragon X / 8cx cores.
+  # +dotprod enables UDOT/SDOT used by LLVM auto-vectorizer and bundled SQLite.
+  "-C", "target-feature=+neon,+fp16,+dotprod",
+]
+
+# ---------------------------------------------------------------------------
+# x86_64-pc-windows-msvc (primary dev / CI target)
+# ---------------------------------------------------------------------------
+[target.x86_64-pc-windows-msvc]
+rustflags = [
+  "-C", "target-cpu=native",
+]

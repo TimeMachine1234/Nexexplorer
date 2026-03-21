@@ -9,6 +9,23 @@ static GLOBAL: MiMalloc = MiMalloc;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // On ARM64 Windows (big.LITTLE topology), cap rayon's thread pool to avoid
+    // scheduling heavy work (image decode, indexing) onto efficiency cores.
+    // Safe no-op on Snapdragon X Elite (all P-cores) and x64.
+    #[cfg(all(target_os = "windows", target_arch = "aarch64"))]
+    {
+        let logical = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(8);
+        // Use at most 8 threads: avoids E-cores on 8cx Gen 3 (8P+4E),
+        // leaves headroom on Snapdragon X Elite (12 Oryon P-cores).
+        let pool_size = logical.min(8).max(4);
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(pool_size)
+            .build_global()
+            .ok();
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {

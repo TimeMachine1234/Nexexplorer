@@ -40,7 +40,12 @@ raw-window-handle = "0.6"
 window-vibrancy = "0.5"
 
 [profile.release]
-opt-level = "s"
+opt-level = 3
 lto = true
 strip = true
 codegen-units = 1
+
+# Image decoding is heavy SIMD work — compile at full speed even in dev
+# so the preview panel stays snappy during development.
+[profile.dev.package.image]
+opt-level = 3
