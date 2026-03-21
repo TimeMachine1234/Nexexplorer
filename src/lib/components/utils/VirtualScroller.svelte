@@ -70,7 +70,7 @@
 
   .virtual-scroller[data-theme="glass"],
   :global([data-theme="glass"]) .virtual-scroller {
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    backdrop-filter: blur(16px) saturate(120%);
+    -webkit-backdrop-filter: blur(16px) saturate(120%);
   }
 </style>

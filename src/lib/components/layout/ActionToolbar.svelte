@@ -300,8 +300,8 @@
     background: var(--surface-float);
     border: 1px solid var(--border-active);
     border-radius: var(--sq-lg);
-    backdrop-filter: var(--blur-md) saturate(160%);
-    -webkit-backdrop-filter: var(--blur-md) saturate(160%);
+    backdrop-filter: var(--blur-md) saturate(120%);
+    -webkit-backdrop-filter: var(--blur-md) saturate(120%);
     box-shadow: var(--shadow-md);
     padding: 3px;
     min-width: 140px;

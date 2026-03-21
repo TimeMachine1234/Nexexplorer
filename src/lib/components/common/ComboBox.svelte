@@ -347,8 +347,8 @@
   /* Glass theme */
   .combobox-list[data-theme="glass"],
   :global([data-theme="glass"]) .combobox-list {
-    backdrop-filter: blur(20px) saturate(180%);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(120%);
+    -webkit-backdrop-filter: blur(20px) saturate(120%);
   }
 
   /* ── Options ── */

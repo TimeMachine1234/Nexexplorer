@@ -188,7 +188,7 @@
 
   .address-bar[data-theme="glass"],
   :global([data-theme="glass"]) .address-bar {
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    backdrop-filter: blur(16px) saturate(120%);
+    -webkit-backdrop-filter: blur(16px) saturate(120%);
   }
 </style>

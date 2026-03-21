@@ -148,8 +148,8 @@
     position: fixed;
     min-width: 180px;
     background: var(--surface-float);
-    backdrop-filter: blur(16px) saturate(1.5);
-    -webkit-backdrop-filter: blur(16px) saturate(1.5);
+    backdrop-filter: blur(16px) saturate(1.2);
+    -webkit-backdrop-filter: blur(16px) saturate(1.2);
     border: 1px solid var(--border-active);
     border-radius: var(--sq-lg);
     padding: 4px 0;

@@ -164,8 +164,8 @@
 
   .btn[data-theme="glass"],
   :global([data-theme="glass"]) .btn {
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    backdrop-filter: blur(16px) saturate(120%);
+    -webkit-backdrop-filter: blur(16px) saturate(120%);
   }
 
   .btn[data-theme="light"].btn--default,

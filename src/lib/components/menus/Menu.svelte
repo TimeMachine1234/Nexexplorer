@@ -36,8 +36,8 @@
 <style>
   .menu {
     background: var(--surface-float);
-    backdrop-filter: blur(16px) saturate(1.5);
-    -webkit-backdrop-filter: blur(16px) saturate(1.5);
+    backdrop-filter: blur(16px) saturate(1.2);
+    -webkit-backdrop-filter: blur(16px) saturate(1.2);
     border: 1px solid var(--border-active);
     border-radius: var(--sq-lg);
     padding: 4px 0;
@@ -54,7 +54,7 @@
 
   .menu[data-theme="glass"],
   :global([data-theme="glass"]) .menu {
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    backdrop-filter: blur(16px) saturate(120%);
+    -webkit-backdrop-filter: blur(16px) saturate(120%);
   }
 </style>

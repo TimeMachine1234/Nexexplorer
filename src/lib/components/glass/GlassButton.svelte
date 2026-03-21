@@ -77,8 +77,7 @@
     background-position: 0% 50%;
     background-repeat: no-repeat;
     transition:
-      background-position calc(400ms * 1.25) cubic-bezier(0.25, 1, 0.5, 1),
-      --angle-2 calc(400ms * 1.25) cubic-bezier(0.25, 1, 0.5, 1);
+      background-position calc(400ms * 1.25) cubic-bezier(0.25, 1, 0.5, 1);
   }
 
   .lg-btn:hover span::after {
@@ -87,13 +86,12 @@
 
   .lg-btn:active span::after {
     background-position: 50% 15%;
-    --angle-2: -15deg;
   }
 
   @media (hover: none) and (pointer: coarse) {
     .lg-btn span::after,
     .lg-btn:active span::after {
-      --angle-2: -45deg;
+      background-position: 0% 50%;
     }
   }
 </style>
