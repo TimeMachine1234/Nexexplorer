@@ -29,6 +29,11 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            // Init transfer engine: load calibration cache, compute RAM budget
+            if let Ok(data_dir) = app.path().app_data_dir() {
+                commands::transfer_engine::init_engine(data_dir);
+            }
+
             if let Some(win) = app.get_webview_window("main") {
                 win32_snap::install_snap_hook(&win);
 
@@ -53,6 +58,9 @@ pub fn run() {
             commands::operations::cancel_transfer,
             commands::operations::get_transfer_progress,
             commands::operations::list_transfers,
+            commands::operations::resolve_conflicts,
+            commands::operations::get_drive_profiles,
+            commands::operations::recalibrate_drive,
             commands::operations::delete_items,
             commands::operations::rename_item,
             commands::operations::create_folder,

@@ -117,12 +117,19 @@
     }
   }
 
-  export async function doDrop(sourcePath: string, destDir: string) {
-    const sourceDir = sourcePath.substring(0, sourcePath.lastIndexOf("\\"));
-    if (sourceDir.replace(/\\$/, "").toLowerCase() === destDir.replace(/\\$/, "").toLowerCase()) return;
+  export async function doDrop(sourcePaths: string | string[], destDir: string) {
+    const paths = Array.isArray(sourcePaths) ? sourcePaths : [sourcePaths];
+    // Filter out files already in destination
+    const filtered = paths.filter((p) => {
+      const sep = p.includes("\\") ? "\\" : "/";
+      const sourceDir = p.substring(0, Math.max(p.lastIndexOf("\\"), p.lastIndexOf("/")));
+      return sourceDir.replace(/[/\\]$/, "").toLowerCase() !== destDir.replace(/[/\\]$/, "").toLowerCase();
+    });
+    if (filtered.length === 0) return;
     try {
-      await invoke("copy_items", { sources: [sourcePath], destination: destDir });
-      onRefresh(destDir);
+      await startTransfer("Copy", filtered, destDir);
+      // Fallback refresh — file watcher handles real-time updates
+      setTimeout(() => onRefresh(destDir), 800);
     } catch (err: any) {
       onError(`Drop failed: ${err}`);
     }

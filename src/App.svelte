@@ -2,6 +2,7 @@
   import Sidebar from "./lib/components/layout/Sidebar.svelte";
   import PaneManager from "./lib/components/layout/PaneManager.svelte";
   import TransferQueue from "./lib/components/operations/TransferQueue.svelte";
+  import ConflictBatch from "./lib/components/operations/ConflictBatch.svelte";
   import PreviewPanel from "./lib/components/preview/PreviewPanel.svelte";
   import QuickPreview from "./lib/components/preview/QuickPreview.svelte";
   import SearchOverlay from "./lib/components/search/SearchOverlay.svelte";
@@ -315,6 +316,7 @@
 {/if}
 
 <SettingsDialog bind:open={showSettings} />
+<ConflictBatch />
 
 <style>
   .app-layout {
