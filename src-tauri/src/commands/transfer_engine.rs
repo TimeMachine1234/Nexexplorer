@@ -556,16 +556,17 @@ fn calc_total_size(sources: &[String]) -> (u64, u64) {
 fn dir_size(path: &Path) -> (u64, u64) {
     let mut bytes = 0u64;
     let mut files = 0u64;
-    if let Ok(entries) = fs::read_dir(path) {
-        for entry in entries.flatten() {
-            let p = entry.path();
-            if p.is_dir() {
-                let (b, f) = dir_size(&p);
-                bytes += b;
-                files += f;
-            } else if let Ok(m) = p.metadata() {
-                bytes += m.len();
-                files += 1;
+    let mut stack = vec![path.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        if let Ok(entries) = fs::read_dir(&dir) {
+            for entry in entries.flatten() {
+                let p = entry.path();
+                if p.is_dir() {
+                    stack.push(p);
+                } else if let Ok(m) = p.metadata() {
+                    bytes += m.len();
+                    files += 1;
+                }
             }
         }
     }
@@ -729,20 +730,26 @@ struct FileJob {
     dst: PathBuf,
 }
 
-/// Recursively expand src→dst into individual file jobs.
+/// Iteratively expand src→dst into individual file jobs.
 /// `dst` is the EXACT destination path (not a directory to copy INTO).
+/// Uses an explicit stack instead of recursion to prevent stack overflow
+/// on deeply nested directory trees.
 fn expand_to_jobs(src: &Path, dst: &Path, tx: &Sender<FileJob>) {
-    if src.is_dir() {
-        let _ = fs::create_dir_all(dst);
-        if let Ok(entries) = fs::read_dir(src) {
-            for entry in entries.flatten() {
-                let child_src = entry.path();
-                let child_dst = dst.join(entry.file_name());
-                expand_to_jobs(&child_src, &child_dst, tx);
+    // stack holds (src_dir, dst_dir) pairs to process
+    let mut stack: Vec<(PathBuf, PathBuf)> = vec![(src.to_path_buf(), dst.to_path_buf())];
+    while let Some((cur_src, cur_dst)) = stack.pop() {
+        if cur_src.is_dir() {
+            let _ = fs::create_dir_all(&cur_dst);
+            if let Ok(entries) = fs::read_dir(&cur_src) {
+                for entry in entries.flatten() {
+                    let child_src = entry.path();
+                    let child_dst = cur_dst.join(entry.file_name());
+                    stack.push((child_src, child_dst));
+                }
             }
+        } else {
+            let _ = tx.send(FileJob { src: cur_src, dst: cur_dst });
         }
-    } else {
-        let _ = tx.send(FileJob { src: src.to_path_buf(), dst: dst.to_path_buf() });
     }
 }
 
@@ -863,6 +870,16 @@ fn run_orchestrator(app: AppHandle, et: Arc<EngineTransfer>) {
                 Some(n) => n.to_owned(),
                 None => continue,
             };
+            // Guard: skip if source is already inside the destination directory
+            // (e.g. moving a folder into itself or its own parent)
+            let src_parent = src.parent().unwrap_or(Path::new(""));
+            if src_parent == scan_dest.as_path() {
+                continue;
+            }
+            // Guard: skip if destination is inside the source (e.g. moving C:\foo into C:\foo\bar)
+            if scan_dest.starts_with(src) {
+                continue;
+            }
             let raw_target = scan_dest.join(&file_name);
 
             // Resolve conflict for this source
