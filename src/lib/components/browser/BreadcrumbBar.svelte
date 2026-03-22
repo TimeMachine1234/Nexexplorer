@@ -18,22 +18,39 @@
   let { currentPath, isHome = false, canBack, canForward, onNavigate, onGoBack, onGoForward, onPathSubmit, onGoUp, onOpenTab }: Props = $props();
 
   let breadcrumbDragTarget = $state<string | null>(null);
-  let springTimer: ReturnType<typeof setTimeout> | null = null;
+  let springRafId: number | null = null;
+  let springPath: string | null = null;
+  let springStart: number = 0;
+  const SPRING_DELAY = 600;
+
+  function cancelSpring() {
+    if (springRafId !== null) { cancelAnimationFrame(springRafId); springRafId = null; }
+    springPath = null;
+  }
 
   function handleSegmentEnter(path: string) {
     if (!$dragState.active) return;
     breadcrumbDragTarget = path;
     dragSetTarget(path);
     // Spring-load: after 600ms hovering, open a new tab at this path
-    if (springTimer) clearTimeout(springTimer);
-    springTimer = setTimeout(() => {
-      onOpenTab?.(path);
-      springTimer = null;
-    }, 600);
+    cancelSpring();
+    springPath = path;
+    springStart = performance.now();
+    function tick() {
+      if (springPath !== path) return;
+      if (performance.now() - springStart >= SPRING_DELAY) {
+        onOpenTab?.(path);
+        springPath = null;
+        springRafId = null;
+        return;
+      }
+      springRafId = requestAnimationFrame(tick);
+    }
+    springRafId = requestAnimationFrame(tick);
   }
 
   function handleSegmentLeave(path: string) {
-    if (springTimer) { clearTimeout(springTimer); springTimer = null; }
+    cancelSpring();
     if (breadcrumbDragTarget === path) {
       breadcrumbDragTarget = null;
       dragSetTarget(null);

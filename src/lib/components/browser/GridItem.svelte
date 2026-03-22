@@ -20,7 +20,11 @@
     onSelect: (path: string, entry: FileEntry, e: MouseEvent) => void;
     currentPath: string;
     selected?: boolean;
+    isDragTarget?: boolean;
     onVisible?: (path: string) => void;
+    onDragBegin?: (path: string, x: number, y: number) => void;
+    onDragEnter?: () => void;
+    onDragLeave?: () => void;
   }
 
   let {
@@ -33,7 +37,11 @@
     onSelect,
     currentPath,
     selected = false,
+    isDragTarget = false,
     onVisible,
+    onDragBegin,
+    onDragEnter,
+    onDragLeave,
   }: Props = $props();
 
   let el: HTMLDivElement | undefined = $state();
@@ -75,6 +83,11 @@
     onSelect(fullPath, entry, e);
     onContextMenu(e, fullPath, entry);
   }
+
+  function handlePointerDown(e: PointerEvent) {
+    if (e.button !== 0) return;
+    onDragBegin?.(getFullPath(), e.clientX, e.clientY);
+  }
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events -->
@@ -83,10 +96,15 @@
   class="grid-item"
   class:selected
   class:is-hidden={entry.is_hidden}
+  class:drag-target={isDragTarget}
+  data-drop-path={entry.is_dir ? getFullPath() : undefined}
   bind:this={el}
   ondblclick={handleDblClick}
   onclick={handleClick}
   oncontextmenu={handleRightClick}
+  onpointerdown={handlePointerDown}
+  onmouseenter={onDragEnter}
+  onmouseleave={onDragLeave}
   style="--item-size: {iconSize}px"
 >
   <div class="thumb-area">
@@ -124,6 +142,11 @@
 
   .grid-item.is-hidden {
     opacity: 0.5;
+  }
+
+  .grid-item.drag-target {
+    background-color: var(--accent-dim);
+    border-color: var(--accent);
   }
 
   .thumb-area {

@@ -4,6 +4,7 @@
   import { processEntries, isImageFile } from "../../utils/entryProcessing";
   import { requestThumbnails, getCachedThumb } from "../../utils/thumbnails";
   import type { SortField } from "../../stores/panes";
+  import { dragState, dragSetTarget } from "$lib/stores/dragState";
 
   interface FileEntry {
     name: string;
@@ -27,6 +28,7 @@
     onOpenFile: (path: string) => void;
     onContextMenu: (e: MouseEvent, path: string, entry: FileEntry) => void;
     onSelect: (path: string, entry: FileEntry, e: MouseEvent) => void;
+    onDragBegin?: (path: string, x: number, y: number) => void;
   }
 
   let {
@@ -42,7 +44,23 @@
     onOpenFile,
     onContextMenu,
     onSelect,
+    onDragBegin,
   }: Props = $props();
+
+  let gridDragTarget = $state<string | null>(null);
+
+  function handleItemEnter(entry: FileEntry, fullPath: string) {
+    if (!$dragState.active || !entry.is_dir) return;
+    gridDragTarget = fullPath;
+    dragSetTarget(fullPath);
+  }
+
+  function handleItemLeave(fullPath: string) {
+    if (gridDragTarget === fullPath) {
+      gridDragTarget = null;
+      dragSetTarget(null);
+    }
+  }
 
   let thumbUrls = $state(new Map<string, string>());
   let pendingPaths: string[] = [];
@@ -124,7 +142,11 @@
       {onSelect}
       {currentPath}
       selected={selectedPaths.has(fullPath)}
+      isDragTarget={gridDragTarget === fullPath && $dragState.active}
       onVisible={(path) => onItemVisible(path, entry.extension)}
+      {onDragBegin}
+      onDragEnter={() => handleItemEnter(entry, fullPath)}
+      onDragLeave={() => handleItemLeave(fullPath)}
     />
   {/each}
 </div>

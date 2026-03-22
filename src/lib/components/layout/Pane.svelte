@@ -576,6 +576,7 @@
           onOpenFile={openFile}
           onContextMenu={handleContextMenu}
           onSelect={handleSelect}
+          onDragBegin={handleDragBegin}
         />
       {:else}
         <FileList

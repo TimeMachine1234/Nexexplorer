@@ -30,6 +30,7 @@
   import { settings } from "./lib/stores/settings";
 
   let paneManager: PaneManager | undefined = $state();
+  let scanRafId = 0;
   let showTransferPanel = $state(false);
   let showPreviewPanel = $state(false);
   let showSearch = $state(false);
@@ -107,7 +108,7 @@
   function handleGlobalPointerMove(e: PointerEvent) {
     const s = get(dragState);
     if (!s.pending && !s.active) return;
-    dragMove(e.clientX, e.clientY);
+    dragMove(e.clientX, e.clientY, e.ctrlKey, e.shiftKey);
     const updated = get(dragState);
     if (!updated.active) return;
     // Toggle grabbing cursor on body while dragging
@@ -115,17 +116,33 @@
       document.body.classList.add('dragging');
     }
     // Only preventDefault once drag is actually active (past 6px threshold)
-    // This stops the browser's native drag/selection without blocking normal clicks
     e.preventDefault();
-    // Scan for drop targets under the cursor (skip the drag ghost overlay)
-    const els = document.elementsFromPoint(e.clientX, e.clientY);
-    for (const el of els) {
-      const htmlEl = el as HTMLElement;
-      if (htmlEl.dataset?.dragGhost !== undefined) continue;
-      const p = htmlEl.dataset?.dropPath;
-      if (p) { dragSetTarget(p); return; }
-    }
-    dragSetTarget(null);
+    // Throttle elementsFromPoint scan to one per rAF frame
+    const cx = e.clientX;
+    const cy = e.clientY;
+    cancelAnimationFrame(scanRafId);
+    scanRafId = requestAnimationFrame(() => {
+      const ds = get(dragState);
+      if (!ds.active) return;
+      // Scan for drop targets under cursor (skip the drag ghost overlay)
+      const els = document.elementsFromPoint(cx, cy);
+      for (const el of els) {
+        const htmlEl = el as HTMLElement;
+        if (htmlEl.dataset?.dragGhost !== undefined) continue;
+        const p = htmlEl.dataset?.dropPath;
+        if (p) {
+          // Suppress highlight if all dragged files are already in this directory
+          const dirNorm = (p.endsWith('\\') ? p : p + '\\').toLowerCase();
+          const allAlreadyHere = ds.paths.every((src) => {
+            const parentDir = (src.replace(/\\[^\\]+$/, '') + '\\').toLowerCase();
+            return parentDir === dirNorm;
+          });
+          dragSetTarget(allAlreadyHere ? null : p);
+          return;
+        }
+      }
+      dragSetTarget(null);
+    });
   }
 
   async function handleGlobalPointerUp(_e: PointerEvent) {
@@ -141,7 +158,17 @@
         return parentDir.toLowerCase() !== destDir.toLowerCase();
       });
       if (filtered.length > 0) {
-        await startTransfer("Copy", filtered, result.target);
+        const s = get(dragState);
+        let op: "Move" | "Copy";
+        if (s.forceOp) {
+          op = s.forceOp;
+        } else {
+          const destDrive = result.target.length >= 2 ? result.target.substring(0, 2).toUpperCase() : "";
+          const allSameDrive = destDrive.endsWith(":") &&
+            filtered.every((p) => p.length >= 2 && p.substring(0, 2).toUpperCase() === destDrive);
+          op = allSameDrive ? "Move" : "Copy";
+        }
+        await startTransfer(op, filtered, result.target);
       }
     }
   }
