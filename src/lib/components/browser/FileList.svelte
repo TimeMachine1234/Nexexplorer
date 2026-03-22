@@ -4,6 +4,7 @@
   import { getNameTokens } from "../../utils/folderFilter";
   import { processEntries } from "../../utils/entryProcessing";
   import { settings } from "../../stores/settings";
+  import { dragState, dragSetTarget } from "$lib/stores/dragState";
 
   interface FileEntry {
     name: string;
@@ -27,9 +28,10 @@
     onSortChange: (field: SortField) => void;
     onContextMenu: (e: MouseEvent, path: string, entry: FileEntry) => void;
     onSelect: (path: string, entry: FileEntry, e: MouseEvent) => void;
+    onDragBegin?: (path: string, x: number, y: number) => void;
   }
 
-  let { entries, currentPath, sortByField, sortAscending, showHidden, filterText, selectedPaths, onNavigate, onOpenFile, onSortChange, onContextMenu, onSelect }: Props = $props();
+  let { entries, currentPath, sortByField, sortAscending, showHidden, filterText, selectedPaths, onNavigate, onOpenFile, onSortChange, onContextMenu, onSelect, onDragBegin }: Props = $props();
 
   const ROW_HEIGHT = 26;
   const OVERSCAN = 10;
@@ -95,6 +97,21 @@
       return () => observer.disconnect();
     }
   });
+
+  let fileRowDragTarget = $state<string | null>(null);
+
+  function handleRowEnter(entry: FileEntry, fullPath: string) {
+    if (!$dragState.active || !entry.is_dir) return;
+    fileRowDragTarget = fullPath;
+    dragSetTarget(fullPath);
+  }
+
+  function handleRowLeave(fullPath: string) {
+    if (fileRowDragTarget === fullPath) {
+      fileRowDragTarget = null;
+      dragSetTarget(null);
+    }
+  }
 </script>
 
 <div class="file-list-header">
@@ -122,7 +139,20 @@
     <div class="virtual-window" style="transform: translateY({offsetY}px);">
       {#each visibleEntries as entry (entry.name)}
         {@const fullPath = currentPath.endsWith("\\") ? `${currentPath}${entry.name}` : `${currentPath}\\${entry.name}`}
-        <FileItem {entry} {onNavigate} {onOpenFile} {onContextMenu} {onSelect} {currentPath} selected={selectedPaths.has(fullPath)} {filterText} />
+        <FileItem
+          {entry}
+          {onNavigate}
+          {onOpenFile}
+          {onContextMenu}
+          {onSelect}
+          {currentPath}
+          selected={selectedPaths.has(fullPath)}
+          {filterText}
+          isDragTarget={fileRowDragTarget === fullPath && $dragState.active}
+          onDragEnter={() => handleRowEnter(entry, fullPath)}
+          onDragLeave={() => handleRowLeave(fullPath)}
+          {onDragBegin}
+        />
       {/each}
     </div>
   </div>

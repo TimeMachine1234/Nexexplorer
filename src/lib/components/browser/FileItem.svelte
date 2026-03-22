@@ -2,6 +2,7 @@
   import FileIcon from "../common/FileIcon.svelte";
   import { getNameTokens } from "../../utils/folderFilter";
   import { settings } from "../../stores/settings";
+  import { dragBegin, dragState } from "$lib/stores/dragState";
 
   interface FileEntry {
     name: string;
@@ -21,9 +22,13 @@
     currentPath: string;
     selected?: boolean;
     filterText?: string;
+    isDragTarget?: boolean;
+    onDragEnter?: () => void;
+    onDragLeave?: () => void;
+    onDragBegin?: (path: string, x: number, y: number) => void;
   }
 
-  let { entry, onNavigate, onOpenFile, onContextMenu, onSelect, currentPath, selected = false, filterText = "" }: Props = $props();
+  let { entry, onNavigate, onOpenFile, onContextMenu, onSelect, currentPath, selected = false, filterText = "", isDragTarget = false, onDragEnter, onDragLeave, onDragBegin }: Props = $props();
 
   function getDisplayName(): string {
     if (!$settings.showExtensions && !entry.is_dir && entry.extension) {
@@ -94,11 +99,11 @@
     if (!$settings.singleClickOpen) openItem();
   }
 
-  function handleDragStart(e: DragEvent) {
-    if (!e.dataTransfer) return;
-    e.dataTransfer.effectAllowed = "copy";
-    e.dataTransfer.setData("application/x-nexexplorer-path", getFullPath());
-    e.dataTransfer.setData("text/plain", getFullPath());
+  function handlePointerDown(e: PointerEvent) {
+    if (e.button !== 0) return; // left button only
+    if ((e.target as HTMLElement).closest('.col-checkbox')) return; // don't drag from checkbox
+    const fullPath = getFullPath();
+    onDragBegin?.(fullPath, e.clientX, e.clientY);
   }
 
   function handleClick(e: MouseEvent) {
@@ -127,12 +132,16 @@
   class="file-item"
   class:is-hidden={entry.is_hidden}
   class:selected={selected}
+  class:drag-target={isDragTarget}
+  class:drag-drop-hover={$dragState.active && $dragState.dropTarget === getFullPath() && entry.is_dir}
   ondblclick={handleDblClick}
   onclick={handleClick}
   onmousedown={handleMouseDown}
   oncontextmenu={handleRightClick}
-  ondragstart={handleDragStart}
-  draggable="true"
+  onpointerdown={handlePointerDown}
+  onmouseenter={onDragEnter}
+  onmouseleave={onDragLeave}
+  data-drop-path={entry.is_dir ? getFullPath() : undefined}
   role="row"
   tabindex="0"
 >
@@ -181,6 +190,16 @@
   }
 
   .file-item.selected:focus {
+    background-color: var(--accent-dim);
+    border-left-color: var(--accent);
+  }
+
+  .file-item.drag-target {
+    background-color: var(--accent-dim);
+    border-left-color: var(--accent);
+  }
+
+  .file-item.drag-drop-hover {
     background-color: var(--accent-dim);
     border-left-color: var(--accent);
   }

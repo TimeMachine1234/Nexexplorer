@@ -5,6 +5,7 @@
   import { pinnedFolders } from "../../stores/sidebar";
   import { HOME_PATH } from "../../stores/panes";
   import { settings } from "../../stores/settings";
+  import { dragState, dragSetTarget } from "$lib/stores/dragState";
 
   interface Props {
     onNavigate: (path: string) => void;
@@ -116,6 +117,22 @@
   function toggleSidebar() {
     isCollapsed = !isCollapsed;
   }
+
+  // --- Drag-and-drop targets ---
+  let sidebarDragTarget = $state<string | null>(null);
+
+  function handleNavEnter(path: string) {
+    if (!$dragState.active) return;
+    sidebarDragTarget = path;
+    dragSetTarget(path);
+  }
+
+  function handleNavLeave(path: string) {
+    if (sidebarDragTarget === path) {
+      sidebarDragTarget = null;
+      dragSetTarget(null);
+    }
+  }
 </script>
 
 <aside class="sidebar" class:resizing={isResizing} class:collapsed={isCollapsed} class:floating={$settings.roundCorners && !isCollapsed} style="width: {isCollapsed ? COLLAPSED_WIDTH : sidebarWidth}px; min-width: {isCollapsed ? COLLAPSED_WIDTH : MIN_WIDTH}px; max-width: {isCollapsed ? COLLAPSED_WIDTH : MAX_WIDTH}px; border-right-width: {isCollapsed ? 0 : 1}px;">
@@ -131,7 +148,16 @@
             <span class="label">Home</span>
           </button>
           {#each homeFolders as item}
-            <button class="nav-item" class:active={isActive(item.path)} onclick={() => onNavigate(item.path)}>
+            <button
+              class="nav-item"
+              class:active={isActive(item.path)}
+              class:drag-target={sidebarDragTarget === item.path && $dragState.active}
+              class:drag-drop-hover={$dragState.active && $dragState.dropTarget === item.path}
+              data-drop-path={item.path}
+              onclick={() => onNavigate(item.path)}
+              onmouseenter={() => handleNavEnter(item.path)}
+              onmouseleave={() => handleNavLeave(item.path)}
+            >
               <span class="icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d={svgIcons[item.iconKey]}/></svg></span>
               <span class="label">{item.name}</span>
             </button>
@@ -151,7 +177,15 @@
           {:else}
             {#each $pinnedFolders as pin}
               <div class="pin-row" class:active={isActive(pin.path)}>
-                <button class="nav-item pin-nav" onclick={() => onNavigate(pin.path)}>
+                <button
+                  class="nav-item pin-nav"
+                  class:drag-target={sidebarDragTarget === pin.path && $dragState.active}
+                  class:drag-drop-hover={$dragState.active && $dragState.dropTarget === pin.path}
+                  data-drop-path={pin.path}
+                  onclick={() => onNavigate(pin.path)}
+                  onmouseenter={() => handleNavEnter(pin.path)}
+                  onmouseleave={() => handleNavLeave(pin.path)}
+                >
                   <span class="icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d={svgIcons.pin}/></svg></span>
                   <span class="label">{pin.name}</span>
                 </button>
@@ -165,7 +199,15 @@
       <SidebarSection title="Drives">
         {#snippet children()}
           {#each drives as drive}
-            <button class="nav-item drive-item" onclick={() => onNavigate(`${drive.letter}:\\`)}>
+            <button
+              class="nav-item drive-item"
+              class:drag-target={sidebarDragTarget === (drive.letter + ":\\") && $dragState.active}
+              class:drag-drop-hover={$dragState.active && $dragState.dropTarget === (drive.letter + ":\\")}
+              data-drop-path={`${drive.letter}:\\`}
+              onclick={() => onNavigate(`${drive.letter}:\\`)}
+              onmouseenter={() => handleNavEnter(drive.letter + ":\\")}
+              onmouseleave={() => handleNavLeave(drive.letter + ":\\")}
+            >
               <span class="icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d={svgIcons.drive}/></svg></span>
               <div class="drive-info">
                 <span class="label">{drive.letter}: {drive.label}</span>
@@ -365,6 +407,16 @@
   }
 
   .nav-item.active {
+    background-color: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  .nav-item.drag-target {
+    background-color: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  .nav-item.drag-drop-hover {
     background-color: var(--accent-dim);
     color: var(--accent);
   }

@@ -45,9 +45,9 @@
     const op = cb.op === "cut" ? "Move" as const : "Copy" as const;
 
     try {
-      await startTransfer(op, cb.paths, dest, "Rename", true);
+      await startTransfer(op, cb.paths, dest);
       if (cb.op === "cut") clipboard.set(null);
-      setTimeout(() => onRefresh(dest), 500);
+      // File watcher (fs-change event) triggers the refresh automatically
     } catch (err: any) {
       layout.update((l) => {
         const p = l.panes.find((pp) => pp.id === ids.pId);
@@ -121,15 +121,19 @@
     const paths = Array.isArray(sourcePaths) ? sourcePaths : [sourcePaths];
     // Filter out files already in destination
     const filtered = paths.filter((p) => {
-      const sep = p.includes("\\") ? "\\" : "/";
       const sourceDir = p.substring(0, Math.max(p.lastIndexOf("\\"), p.lastIndexOf("/")));
       return sourceDir.replace(/[/\\]$/, "").toLowerCase() !== destDir.replace(/[/\\]$/, "").toLowerCase();
     });
     if (filtered.length === 0) return;
+    // Move when all sources share the same drive letter as the destination (like Windows Explorer).
+    // Cross-drive drops always copy.
+    const destDrive = destDir.length >= 2 ? destDir.substring(0, 2).toUpperCase() : "";
+    const allSameDrive = destDrive.endsWith(":") &&
+      filtered.every((p) => p.length >= 2 && p.substring(0, 2).toUpperCase() === destDrive);
+    const op = allSameDrive ? "Move" as const : "Copy" as const;
     try {
-      await startTransfer("Copy", filtered, destDir);
-      // Fallback refresh — file watcher handles real-time updates
-      setTimeout(() => onRefresh(destDir), 800);
+      await startTransfer(op, filtered, destDir);
+      // File watcher (fs-change event) handles refresh automatically
     } catch (err: any) {
       onError(`Drop failed: ${err}`);
     }

@@ -1,5 +1,6 @@
 <script lang="ts">
   import NavigationButtons from "./NavigationButtons.svelte";
+  import { dragState, dragSetTarget } from "$lib/stores/dragState";
 
   interface Props {
     currentPath: string;
@@ -11,9 +12,33 @@
     onGoForward: () => void;
     onPathSubmit: (path: string) => void;
     onGoUp: () => void;
+    onOpenTab?: (path: string) => void;
   }
 
-  let { currentPath, isHome = false, canBack, canForward, onNavigate, onGoBack, onGoForward, onPathSubmit, onGoUp }: Props = $props();
+  let { currentPath, isHome = false, canBack, canForward, onNavigate, onGoBack, onGoForward, onPathSubmit, onGoUp, onOpenTab }: Props = $props();
+
+  let breadcrumbDragTarget = $state<string | null>(null);
+  let springTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function handleSegmentEnter(path: string) {
+    if (!$dragState.active) return;
+    breadcrumbDragTarget = path;
+    dragSetTarget(path);
+    // Spring-load: after 600ms hovering, open a new tab at this path
+    if (springTimer) clearTimeout(springTimer);
+    springTimer = setTimeout(() => {
+      onOpenTab?.(path);
+      springTimer = null;
+    }, 600);
+  }
+
+  function handleSegmentLeave(path: string) {
+    if (springTimer) { clearTimeout(springTimer); springTimer = null; }
+    if (breadcrumbDragTarget === path) {
+      breadcrumbDragTarget = null;
+      dragSetTarget(null);
+    }
+  }
 
   let isEditing = $state(false);
   let editValue = $state("");
@@ -101,7 +126,15 @@
                 <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             {/if}
-            <button class="segment" onclick={(e) => { e.stopPropagation(); onNavigate(seg.path); }}>
+            <button
+              class="segment"
+              class:drag-target={breadcrumbDragTarget === seg.path && $dragState.active}
+              class:drag-drop-hover={$dragState.active && $dragState.dropTarget === seg.path}
+              data-drop-path={seg.path}
+              onclick={(e) => { e.stopPropagation(); onNavigate(seg.path); }}
+              onmouseenter={() => handleSegmentEnter(seg.path)}
+              onmouseleave={() => handleSegmentLeave(seg.path)}
+            >
               {seg.label}
             </button>
           {/each}
@@ -201,7 +234,17 @@
   .segment:last-child {
     color: var(--text-secondary);
     cursor: default;
-    pointer-events: none;
+  }
+
+  .segment.drag-target {
+    background-color: var(--accent-dim);
+    color: var(--accent);
+    border-radius: var(--sq-xs);
+  }
+
+  .segment.drag-drop-hover {
+    background-color: var(--accent-dim);
+    color: var(--accent);
   }
 
   .segment-home {

@@ -232,8 +232,8 @@ fn get_drive_root(path: &Path) -> String {
 fn calibrate_drive(drive_root: &str, dest: &Path) -> DriveProfile {
     let temp_file = dest.join("__nexexplorer_calibration__.tmp");
 
-    // Measure write speed with 64MB test
-    let measured_speed_mbs = measure_write_speed(&temp_file, 64);
+    // Measure write speed with 8MB test (fast but accurate with pseudo-random pattern)
+    let measured_speed_mbs = measure_write_speed(&temp_file, 8);
 
     // Map measured speed to optimal worker + buffer config
     let (optimal_workers, optimal_buffer_mb) = match measured_speed_mbs {
@@ -255,7 +255,10 @@ fn calibrate_drive(drive_root: &str, dest: &Path) -> DriveProfile {
 }
 
 fn measure_write_speed(temp_file: &Path, size_mb: usize) -> u64 {
-    let buf = vec![0xABu8; 1024 * 1024]; // 1MB chunk
+    // Use a pseudo-random pattern — SSDs compress 0x00/0xAB, skewing results
+    let buf: Vec<u8> = (0usize..1024 * 1024)
+        .map(|i| ((i.wrapping_mul(0x9E3779B9)) ^ 0xDEAD) as u8)
+        .collect();
     let start = Instant::now();
     let mut written = 0usize;
 
@@ -512,7 +515,10 @@ fn copy_with_retry(
     for attempt in 0u32..3 {
         match copy_file_adaptive(src, dst, buf_size, control, pause_sync, counters) {
             Ok(()) => return true,
-            Err(CopyErr::Cancelled) => return false,
+            Err(CopyErr::Cancelled) => {
+                let _ = fs::remove_file(dst); // remove partial file on cancel
+                return false;
+            }
             Err(CopyErr::Io(_)) if attempt < 2 => {
                 let _ = fs::remove_file(dst);
                 std::thread::sleep(Duration::from_secs((attempt + 1) as u64));
@@ -794,24 +800,32 @@ fn run_orchestrator(app: AppHandle, et: Arc<EngineTransfer>) {
     let destination = et.destination.clone();
     let dest_path = PathBuf::from(&destination);
 
-    // 1. Calculate total size
+    // 1. Set Running immediately so the UI shows activity at once
+    et.control.lock().unwrap().status = TransferStatus::Running;
+
+    // 2. Start emitter thread immediately — user sees "Running" before any blocking work
+    let emitter_et = et.clone();
+    let emitter_app = app.clone();
+    let emitter_id = id.clone();
+    let emitter_handle = std::thread::spawn(move || {
+        run_emitter(emitter_app, emitter_et, emitter_id);
+    });
+
+    // 3. Load or calibrate drive profile (now reduced to 8MB test, ~0.1s)
+    let profile = load_or_calibrate(&dest_path, &app, &id);
+
+    // 4. Calculate total size (bytes_total starts at 0; emitter shows "calculating" state)
     let (bytes_total, files_total) = calc_total_size(&sources);
     et.bytes_total.store(bytes_total, Ordering::Relaxed);
     et.files_total.store(files_total, Ordering::Relaxed);
 
-    // 2. Load or calibrate drive profile
-    let profile = load_or_calibrate(&dest_path, &app, &id);
-
-    // 3. Compute workers
+    // 5. Compute workers
     let pressure = check_memory_pressure();
     let num_workers = spawn_worker_count(&profile, pressure);
     et.drive_concurrency.store(num_workers as u64, Ordering::Relaxed);
     let buf_size = (profile.optimal_buffer_mb as usize).max(1) * 1024 * 1024;
 
-    // 4. Set Running
-    et.control.lock().unwrap().status = TransferStatus::Running;
-
-    // 5. Pre-scan conflicts
+    // 6. Pre-scan conflicts
     let conflicts = prescan_conflicts(&sources, &dest_path);
     if !conflicts.is_empty() {
         let _ = app.emit(
@@ -831,14 +845,6 @@ fn run_orchestrator(app: AppHandle, et: Arc<EngineTransfer>) {
         }
     }
 
-    // 6. Start emitter thread
-    let emitter_et = et.clone();
-    let emitter_app = app.clone();
-    let emitter_id = id.clone();
-    let emitter_handle = std::thread::spawn(move || {
-        run_emitter(emitter_app, emitter_et, emitter_id);
-    });
-
     // 7. Build work channel and spawn workers
     let (work_tx, work_rx): (Sender<FileJob>, Receiver<FileJob>) = bounded(512);
     let work_rx = Arc::new(work_rx);
@@ -847,6 +853,7 @@ fn run_orchestrator(app: AppHandle, et: Arc<EngineTransfer>) {
     let scan_sources = sources.clone();
     let scan_dest = dest_path.clone();
     let scan_control = et.control.clone();
+    let scan_counters = et.counters.clone();
     let scan_tx = work_tx.clone();
     let scan_op = op.clone();
     std::thread::spawn(move || {
@@ -885,12 +892,16 @@ fn run_orchestrator(app: AppHandle, et: Arc<EngineTransfer>) {
 
             // Same-drive move: try atomic rename first
             if scan_op == TransferOp::Move {
+                // Measure BEFORE rename — source path disappears after success
+                let (src_bytes, src_files) = if src.is_dir() {
+                    dir_size(src)
+                } else {
+                    let bytes = src.metadata().map(|m| m.len()).unwrap_or(0);
+                    (bytes, 1u64)
+                };
                 if fs::rename(src, &target).is_ok() {
-                    // Count all files in source as done (approximate)
-                    let (_, moved_count) = dir_size(src);
-                    // source is gone now, so add file_count to files_done via scan_control
-                    // (We skip adding to bytes_done since rename is instant)
-                    let _ = moved_count; // counted on completion
+                    scan_counters.files_done.fetch_add(src_files.max(1), Ordering::Relaxed);
+                    scan_counters.bytes_done.fetch_add(src_bytes, Ordering::Relaxed);
                     continue;
                 }
             }
@@ -959,6 +970,8 @@ fn run_orchestrator(app: AppHandle, et: Arc<EngineTransfer>) {
     }
 
     let _ = emitter_handle.join();
+    // Remove from global map to prevent memory leak over long sessions
+    ENGINE_TRANSFERS.lock().unwrap().remove(&id);
 }
 
 fn run_emitter(app: AppHandle, et: Arc<EngineTransfer>, id: String) {

@@ -38,6 +38,9 @@
   } from "../../stores/panes";
   import { clipboard } from "../../stores/transfers";
   import { selectedFileForPreview, previewFileContext, previewArrowPath } from "../../stores/preview";
+  import { dragBegin, dragState, dragSetTarget } from "$lib/stores/dragState";
+  import { startTransfer } from "../../stores/transfers";
+  import MovePicker from "$lib/components/operations/MovePicker.svelte";
   import { get } from "svelte/store";
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
@@ -76,6 +79,7 @@
   let contextMenu: { x: number; y: number; path: string; entry: FileEntry } | null = $state(null);
   let renamingPath: string | null = $state(null);
   let renameValue: string = $state("");
+  let showMovePicker = $state(false);
 
   function handleFileOpsError(msg: string) {
     const ids = getLiveTab();
@@ -377,31 +381,20 @@
     if (!isActive) setActivePane(paneId);
   }
 
-  let dragOver = $state(false);
-
-  function handleDragOver(e: DragEvent) {
-    if (!e.dataTransfer) return;
-    if (e.dataTransfer.types.includes("application/x-nexexplorer-path")) {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "copy";
-      dragOver = true;
+  function handleFileAreaEnter() {
+    if ($dragState.active && tabData) {
+      dragSetTarget(tabData.path);
     }
   }
 
-  function handleDragLeave() {
-    dragOver = false;
+  function handleBreadcrumbOpenTab(path: string) {
+    addTab(paneId);
+    requestAnimationFrame(() => navigateTo(path));
   }
 
-  async function handleDrop(e: DragEvent) {
-    dragOver = false;
-    if (!e.dataTransfer) return;
-    const sourcePath = e.dataTransfer.getData("application/x-nexexplorer-path");
-    if (!sourcePath) return;
-    e.preventDefault();
-
-    const ids = getLiveTab();
-    if (!ids) return;
-    await fileOps?.doDrop(sourcePath, ids.tab.path);
+  function handleDragBegin(clickedPath: string, x: number, y: number) {
+    const paths = selectedPaths.has(clickedPath) ? [...selectedPaths] : [clickedPath];
+    dragBegin(paths, x, y);
   }
 
   // Auto-load: when the active tab has no entries and isn't loading, fetch its directory
@@ -534,6 +527,7 @@
       onGoForward={handleGoForward}
       onPathSubmit={(p) => navigateTo(p)}
       onGoUp={handleGoUp}
+      onOpenTab={handleBreadcrumbOpenTab}
     />
     {/if}
     {#if !isHome}
@@ -547,6 +541,7 @@
       onPaste={() => fileOps?.doPaste()}
       onRename={() => { if (selectedPaths.size === 1) startRename([...selectedPaths][0]); }}
       onDelete={() => fileOps?.doDelete(false)}
+      onMove={() => showMovePicker = true}
     />
     {/if}
     {#if isHome}
@@ -558,10 +553,9 @@
     {:else}
     <div
       class="file-area"
-      class:drag-over={dragOver}
-      ondragover={handleDragOver}
-      ondragleave={handleDragLeave}
-      ondrop={handleDrop}
+      data-drop-path={tabData.path}
+      class:drag-over={$dragState.active && $dragState.dropTarget === tabData.path}
+      onmouseenter={handleFileAreaEnter}
     >
       {#if tabData.isLoading}
         <EmptyState type="loading" />
@@ -598,6 +592,7 @@
           onSortChange={handleSortChange}
           onContextMenu={handleContextMenu}
           onSelect={handleSelect}
+          onDragBegin={handleDragBegin}
         />
       {/if}
     </div>
@@ -616,6 +611,18 @@
           <Button size="md" onclick={cancelRename}>Cancel</Button>
         {/snippet}
       </Dialog>
+    {/if}
+    {#if showMovePicker}
+      <MovePicker
+        sourcePaths={[...selectedPaths]}
+        initialPath={tabData?.path ?? 'C:\\'}
+        onConfirm={async (destPath) => {
+          showMovePicker = false;
+          if (selectedPaths.size === 0) return;
+          await startTransfer('Move', [...selectedPaths], destPath);
+        }}
+        onClose={() => showMovePicker = false}
+      />
     {/if}
     <FilterBar
       bind:this={filterBar}
@@ -682,12 +689,6 @@
     flex: 1;
     overflow: hidden;
     position: relative;
-  }
-
-  .file-area.drag-over {
-    outline: 2px dashed var(--accent);
-    outline-offset: -2px;
-    background-color: rgba(0, 180, 216, 0.05);
   }
 
 

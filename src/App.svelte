@@ -7,6 +7,10 @@
   import QuickPreview from "./lib/components/preview/QuickPreview.svelte";
   import SearchOverlay from "./lib/components/search/SearchOverlay.svelte";
   import SettingsDialog from "./lib/components/dialogs/SettingsDialog.svelte";
+  import DragGhost from "$lib/components/utils/DragGhost.svelte";
+  import { get } from "svelte/store";
+  import { dragState, dragMove, dragSetTarget, dragEnd, dragCancel } from "$lib/stores/dragState";
+  import { startTransfer } from "./lib/stores/transfers";
   import {
     layout,
     getActivePane,
@@ -99,6 +103,48 @@
       previewFilePath = $debouncedPreviewPath;
     }
   });
+
+  function handleGlobalPointerMove(e: PointerEvent) {
+    const s = get(dragState);
+    if (!s.pending && !s.active) return;
+    dragMove(e.clientX, e.clientY);
+    const updated = get(dragState);
+    if (!updated.active) return;
+    // Toggle grabbing cursor on body while dragging
+    if (!document.body.classList.contains('dragging')) {
+      document.body.classList.add('dragging');
+    }
+    // Only preventDefault once drag is actually active (past 6px threshold)
+    // This stops the browser's native drag/selection without blocking normal clicks
+    e.preventDefault();
+    // Scan for drop targets under the cursor (skip the drag ghost overlay)
+    const els = document.elementsFromPoint(e.clientX, e.clientY);
+    for (const el of els) {
+      const htmlEl = el as HTMLElement;
+      if (htmlEl.dataset?.dragGhost !== undefined) continue;
+      const p = htmlEl.dataset?.dropPath;
+      if (p) { dragSetTarget(p); return; }
+    }
+    dragSetTarget(null);
+  }
+
+  async function handleGlobalPointerUp(_e: PointerEvent) {
+    const s = get(dragState);
+    if (!s.pending && !s.active) return;
+    document.body.classList.remove('dragging');
+    const result = dragEnd();
+    if (result && result.target && result.paths.length > 0) {
+      const destDir = result.target.endsWith("\\") ? result.target : result.target + "\\";
+      // Avoid self-drop: filter sources that are already in the destination
+      const filtered = result.paths.filter((p) => {
+        const parentDir = p.replace(/\\[^\\]+$/, "") + "\\";
+        return parentDir.toLowerCase() !== destDir.toLowerCase();
+      });
+      if (filtered.length > 0) {
+        await startTransfer("Copy", filtered, result.target);
+      }
+    }
+  }
 
   function handleSidebarNavigate(path: string) {
     const ref = paneManager?.getActivePaneRef();
@@ -278,7 +324,12 @@
   }
 </script>
 
-<svelte:window onkeydown={handleKeydown} />
+<svelte:window
+  onkeydown={handleKeydown}
+  onpointermove={handleGlobalPointerMove}
+  onpointerup={handleGlobalPointerUp}
+  ondragstart={(e) => { e.preventDefault(); }}
+/>
 
 
 <div class="app-layout">
@@ -317,6 +368,7 @@
 
 <SettingsDialog bind:open={showSettings} />
 <ConflictBatch />
+<DragGhost />
 
 <style>
   .app-layout {

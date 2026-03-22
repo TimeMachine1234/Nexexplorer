@@ -235,6 +235,12 @@ html, body, #app {
   user-select: none;
 }
 
+/* === Drag cursor === */
+body.dragging,
+body.dragging * {
+  cursor: grabbing !important;
+}
+
 /* === Scrollbars (macOS-style thin) === */
 ::-webkit-scrollbar {
   width: 6px;

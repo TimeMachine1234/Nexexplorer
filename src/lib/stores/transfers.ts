@@ -131,8 +131,6 @@ export async function startTransfer(
   op: TransferOp,
   sources: string[],
   destination: string,
-  _conflict?: ConflictResolution,
-  _applyToAll?: boolean,
 ): Promise<string> {
   const id: string = await invoke("start_transfer", {
     op,
