@@ -4,6 +4,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import WindowControls from "./WindowControls.svelte";
   import type { Snippet } from "svelte";
+  import { dragState } from "$lib/stores/dragState";
 
   interface Props {
     tabs: TabState[];
@@ -93,6 +94,39 @@
     appWindow.startDragging();
   }
 
+  // Drag-over tab switching
+  const SWITCH_DELAY = 400;
+  let switchRafId = 0;
+  let switchTargetId: string | null = null;
+  let switchStart = 0;
+
+  function cancelTabSwitch() {
+    cancelAnimationFrame(switchRafId);
+    switchTargetId = null;
+  }
+
+  function handleTabDragEnter(tabId: string) {
+    if (!$dragState.active) return;
+    if (tabId === activeTabId) { cancelTabSwitch(); return; }
+    cancelTabSwitch();
+    switchTargetId = tabId;
+    switchStart = performance.now();
+    function tick() {
+      if (switchTargetId !== tabId) return;
+      if (performance.now() - switchStart >= SWITCH_DELAY) {
+        onSwitchTab(tabId);
+        switchTargetId = null;
+        return;
+      }
+      switchRafId = requestAnimationFrame(tick);
+    }
+    switchRafId = requestAnimationFrame(tick);
+  }
+
+  function handleTabDragLeave() {
+    cancelTabSwitch();
+  }
+
   function handleDragSpacerDblClick() {
     invoke('toggle_fullscreen').catch(() => appWindow.toggleMaximize());
   }
@@ -120,8 +154,11 @@
           <div
             class="tab"
             class:active={tab.id === activeTabId}
+            class:drag-switch-pending={switchTargetId === tab.id}
             onclick={() => onSwitchTab(tab.id)}
             onauxclick={(e) => handleMiddleClick(e, tab.id)}
+            onmouseenter={() => handleTabDragEnter(tab.id)}
+            onmouseleave={handleTabDragLeave}
             title={tab.path}
             role="tab"
             tabindex="0"
@@ -283,6 +320,12 @@
   .tab:hover {
     background: var(--surface-high);
     color: var(--text-secondary);
+  }
+
+  .tab.drag-switch-pending {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   }
 
   .tab.active {
