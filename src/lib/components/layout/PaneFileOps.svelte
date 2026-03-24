@@ -8,6 +8,7 @@
   } from "../../stores/panes";
   import { clipboard, startTransfer } from "../../stores/transfers";
   import { pinnedFolders } from "../../stores/sidebar";
+  import ConfirmDialog from "../dialogs/ConfirmDialog.svelte";
 
   interface Props {
     paneId: string;
@@ -17,6 +18,24 @@
   }
 
   let { paneId, selectedPaths, onRefresh, onError }: Props = $props();
+
+  // --- dialog state ---
+  let dlgOpen = $state(false);
+  let dlgTitle = $state("");
+  let dlgMessage = $state("");
+  let dlgConfirmLabel = $state("Delete");
+  let dlgResolve: ((ok: boolean) => void) | null = null;
+
+  function askUser(title: string, message: string, confirmLabel = "Delete"): Promise<boolean> {
+    dlgTitle = title;
+    dlgMessage = message;
+    dlgConfirmLabel = confirmLabel;
+    dlgOpen = true;
+    return new Promise((resolve) => { dlgResolve = resolve; });
+  }
+
+  function onDlgConfirm() { dlgResolve?.(true);  dlgResolve = null; }
+  function onDlgCancel()  { dlgResolve?.(false); dlgResolve = null; }
 
   function getLiveTab(): { pId: string; tId: string; tab: TabState } | null {
     const l = get(layout);
@@ -63,9 +82,22 @@
   export async function doDelete(permanent: boolean) {
     if (selectedPaths.size === 0) return;
     const paths = [...selectedPaths];
+    const count = paths.length;
+    const label = count === 1 ? "1 item" : `${count} items`;
 
     if (permanent) {
-      const ok = confirm(`Permanently delete ${paths.length} item(s)? This cannot be undone.`);
+      const ok = await askUser(
+        "Delete Permanently",
+        `Permanently delete ${label}? This cannot be undone.`,
+        "Delete Permanently"
+      );
+      if (!ok) return;
+    } else {
+      const ok = await askUser(
+        "Move to Recycle Bin",
+        `Move ${label} to the Recycle Bin?`,
+        "Delete"
+      );
       if (!ok) return;
     }
 
@@ -74,7 +106,25 @@
       const ids = getLiveTab();
       if (ids) onRefresh(ids.tab.path);
     } catch (err: any) {
-      alert(`Delete failed: ${err}`);
+      const msg = String(err);
+      if (msg.includes("LONG_PATH_NEEDS_PERMANENT:")) {
+        // Windows Recycle Bin cannot handle long paths — ask user to confirm permanent delete
+        const ok = await askUser(
+          "Path Too Long for Recycle Bin",
+          `One or more paths exceed the Windows 260-character limit and cannot be moved to the Recycle Bin.\n\nDelete permanently instead? This cannot be undone.`,
+          "Delete Permanently"
+        );
+        if (!ok) return;
+        try {
+          await invoke("delete_items", { paths, permanent: true });
+          const ids = getLiveTab();
+          if (ids) onRefresh(ids.tab.path);
+        } catch (err2: any) {
+          onError(`Delete failed: ${err2}`);
+        }
+        return;
+      }
+      onError(`Delete failed: ${msg}`);
     }
   }
 
@@ -183,3 +233,14 @@
     return items;
   }
 </script>
+
+<ConfirmDialog
+  bind:open={dlgOpen}
+  title={dlgTitle}
+  message={dlgMessage}
+  confirmLabel={dlgConfirmLabel}
+  cancelLabel="Cancel"
+  variant="danger"
+  onconfirm={onDlgConfirm}
+  oncancel={onDlgCancel}
+/>

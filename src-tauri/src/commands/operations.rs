@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tauri::AppHandle;
 
 pub use super::transfer_engine::{
@@ -107,16 +107,37 @@ pub fn delete_items(paths: Vec<String>, permanent: bool) -> Result<(), String> {
             return Err(format!("Path does not exist: {}", path_str));
         }
         if permanent {
-            if path.is_dir() {
-                fs::remove_dir_all(path)
+            // Use \\?\ prefix for long paths to bypass the 260-char MAX_PATH limit
+            #[cfg(target_os = "windows")]
+            let eff_path: PathBuf = if path_str.len() > 260 && !path_str.starts_with(r"\\?\") {
+                PathBuf::from(format!(r"\\?\{}", path_str))
+            } else {
+                PathBuf::from(path_str)
+            };
+            #[cfg(not(target_os = "windows"))]
+            let eff_path: PathBuf = PathBuf::from(path_str);
+
+            if eff_path.is_dir() {
+                fs::remove_dir_all(&eff_path)
                     .map_err(|e| format!("Failed to delete {}: {}", path_str, e))?;
             } else {
-                fs::remove_file(path)
+                fs::remove_file(&eff_path)
                     .map_err(|e| format!("Failed to delete {}: {}", path_str, e))?;
             }
         } else {
-            trash::delete(path)
-                .map_err(|e| format!("Failed to trash {}: {}", path_str, e))?;
+            // Windows Shell API (used by the `trash` crate) cannot handle paths
+            // longer than MAX_PATH (260 chars). Fall back to permanent deletion
+            // for long paths since there is no way to move them to the Recycle Bin.
+            let trash_result = trash::delete(path);
+            if let Err(e) = trash_result {
+                #[cfg(target_os = "windows")]
+                if path_str.len() > 260 {
+                    // Windows Shell API cannot trash long paths — signal the frontend
+                    // so it can ask the user for confirmation before permanently deleting.
+                    return Err(format!("LONG_PATH_NEEDS_PERMANENT:{}", path_str));
+                }
+                return Err(format!("Failed to trash {}: {}", path_str, e));
+            }
         }
     }
     Ok(())
