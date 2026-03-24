@@ -25,6 +25,9 @@ export interface TransferProgress {
   failed_files: string[];
   drive_concurrency: number;
   calibrating: boolean;
+  verify: boolean;
+  verified_files: number;
+  verify_failed_files: string[];
   // Client-side interpolation (not from Rust)
   _interpolated_bytes?: number;
   _last_event_ts?: number;
@@ -85,14 +88,38 @@ function stopInterpolation() {
 // ── Event listeners ───────────────────────────────────────────────────────────
 
 let listenerSetup = false;
+let _unlistenProgress: Promise<() => void> | null = null;
+let _unlistenConflicts: Promise<() => void> | null = null;
+let _unlistenDone: Promise<() => void> | null = null;
+const _autoCleanupTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function showToast(title: string, body: string) {
+  if (!("Notification" in window)) return;
+  const fire = () => new Notification(title, { body, icon: "/app-icon.png" });
+  if (Notification.permission === "granted") {
+    fire();
+  } else if (Notification.permission !== "denied") {
+    Notification.requestPermission().then((p) => { if (p === "granted") fire(); });
+  }
+}
 
 export function setupTransferListener() {
   if (listenerSetup) return;
   listenerSetup = true;
 
-  listen<TransferProgress>("transfer-progress", (event) => {
+  _unlistenDone = listen<{ id: string; status: string; title: string; body: string }>(
+    "transfer-done",
+    (event) => {
+      const { title, body, status } = event.payload;
+      if (status !== "Cancelled") showToast(title, body);
+    }
+  );
+
+  _unlistenProgress = listen<TransferProgress>("transfer-progress", (event) => {
     const p = event.payload;
     const now = performance.now();
+    const isTerminal = p.status === "Completed" || p.status === "Failed" || p.status === "Cancelled";
+
     transfers.update((list) => {
       const enriched: TransferProgress = {
         ...p,
@@ -108,6 +135,15 @@ export function setupTransferListener() {
       return [...list, enriched];
     });
 
+    // Auto-remove terminal transfers after 30s to prevent unbounded array growth
+    if (isTerminal && !_autoCleanupTimers.has(p.id)) {
+      const timer = setTimeout(() => {
+        transfers.update((list) => list.filter((t) => t.id !== p.id));
+        _autoCleanupTimers.delete(p.id);
+      }, 30_000);
+      _autoCleanupTimers.set(p.id, timer);
+    }
+
     // Manage interpolation loop
     const current = get(transfers);
     if (current.some((t) => t.status === "Running")) {
@@ -117,12 +153,21 @@ export function setupTransferListener() {
     }
   });
 
-  listen<{ id: string; conflicts: ConflictInfo[] }>("transfer-conflicts", (event) => {
+  _unlistenConflicts = listen<{ id: string; conflicts: ConflictInfo[] }>("transfer-conflicts", (event) => {
     pendingConflicts.update((list) => [
       ...list,
       { id: event.payload.id, conflicts: event.payload.conflicts },
     ]);
   });
+}
+
+export async function teardownTransferListener() {
+  if (_unlistenProgress) { (await _unlistenProgress)(); _unlistenProgress = null; }
+  if (_unlistenConflicts) { (await _unlistenConflicts)(); _unlistenConflicts = null; }
+  if (_unlistenDone) { (await _unlistenDone)(); _unlistenDone = null; }
+  for (const timer of _autoCleanupTimers.values()) clearTimeout(timer);
+  _autoCleanupTimers.clear();
+  listenerSetup = false;
 }
 
 // ── Commands ──────────────────────────────────────────────────────────────────
@@ -131,6 +176,7 @@ export async function startTransfer(
   op: TransferOp,
   sources: string[],
   destination: string,
+  verify = false,
 ): Promise<string> {
   const id: string = await invoke("start_transfer", {
     op,
@@ -138,6 +184,7 @@ export async function startTransfer(
     destination,
     conflict: null,
     applyToAll: false,
+    verify,
   });
   // Add placeholder entry immediately
   transfers.update((list) => [
@@ -161,6 +208,9 @@ export async function startTransfer(
       failed_files: [],
       drive_concurrency: 1,
       calibrating: false,
+      verify,
+      verified_files: 0,
+      verify_failed_files: [],
       _interpolated_bytes: 0,
       _last_event_ts: performance.now(),
     },
@@ -195,4 +245,49 @@ export function clearCompletedTransfers() {
       (t) => t.status !== "Completed" && t.status !== "Failed" && t.status !== "Cancelled"
     )
   );
+}
+
+/// Copy/move the same set of sources to multiple destinations simultaneously.
+/// Each destination gets its own independent transfer (separate progress entries).
+/// Returns the list of transfer IDs, one per destination.
+export async function startTransferMulti(
+  op: TransferOp,
+  sources: string[],
+  destinations: string[],
+  verify = false,
+): Promise<string[]> {
+  return Promise.all(destinations.map((dest) => startTransfer(op, sources, dest, verify)));
+}
+
+/// Create a new folder named `folderName` inside `parentPath` and move
+/// all `itemPaths` into it. Returns the path of the created folder.
+export async function newFolderWithItems(
+  parentPath: string,
+  folderName: string,
+  itemPaths: string[],
+): Promise<string> {
+  return invoke<string>("new_folder_with_items", {
+    parentPath,
+    folderName,
+    itemPaths,
+  });
+}
+
+/// Set global transfer speed cap. Pass 0 for unlimited.
+/// Example: setRateLimit(50 * 1024 * 1024) caps at 50 MB/s.
+export async function setRateLimit(bytesPerSec: number): Promise<void> {
+  await invoke("set_rate_limit", { bytesPerSec });
+}
+
+export async function getRateLimit(): Promise<number> {
+  return invoke<number>("get_rate_limit");
+}
+
+/// Mirror the directory tree of `sourcePath` under `destPath` without copying files.
+/// Returns the number of directories created.
+export async function mirrorFolderStructure(
+  sourcePath: string,
+  destPath: string,
+): Promise<number> {
+  return invoke<number>("mirror_folder_structure", { sourcePath, destPath });
 }

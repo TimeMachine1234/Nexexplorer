@@ -31,6 +31,7 @@ image = { version = "0.25", default-features = false, features = ["jpeg", "png",
 rayon = "1"
 crossbeam-channel = "0.5"
 memmap2 = "0.9"
+crc32fast = "1"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 windows-sys = { version = "0.48", features = [

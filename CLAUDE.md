@@ -72,7 +72,8 @@ src-tauri/                    # Rust backend
     commands/
       fs.rs                   # File system operations
       search.rs               # File search (SQLite indexed)
-      operations.rs           # Copy, move, delete, rename
+      operations.rs           # Copy, move, delete, rename (delegates to transfer_engine)
+      transfer_engine.rs      # World-class transfer engine (see below)
       preview.rs              # File preview generation
       window.rs               # Window management
       mod.rs                  # Command module exports
@@ -86,6 +87,9 @@ src-tauri/                    # Rust backend
 - Search uses SQLite database indexed by the Rust backend
 - File watching uses the `notify` crate for real-time updates
 
+## Transfer Engine
+See **[`docs/transfer-engine.md`](docs/transfer-engine.md)** for full documentation — architecture, copy tiers, drive calibration, long path support, CRC32 verification, conflict resolution, progress events, and the full frontend API.
+
 ## Key Rust Dependencies
 - `tauri 2` - Desktop app framework
 - `rusqlite` - SQLite for search index
@@ -94,6 +98,10 @@ src-tauri/                    # Rust backend
 - `trash` - Safe file deletion (moves to trash)
 - `zip` - Archive support
 - `mimalloc` - Performance allocator
+- `filetime` - Preserves source file timestamps (mtime) after copy/move
+- `crc32fast` - SIMD-accelerated CRC32 for optional post-copy integrity verification
+- `memmap2` - Memory-mapped I/O for large-file (>256MB) transfers
+- `crossbeam-channel` - Work queue between scanner thread and worker threads
 
 ## Coding Conventions
 - Svelte components use PascalCase (e.g., `FileItem.svelte`)

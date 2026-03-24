@@ -19,8 +19,9 @@ pub fn start_transfer(
     // Legacy params kept for backward compat — conflict now handled via pre-scan event
     #[allow(unused_variables)] conflict: Option<ConflictResolution>,
     #[allow(unused_variables)] apply_to_all: Option<bool>,
+    verify: Option<bool>,
 ) -> Result<String, String> {
-    Ok(transfer_engine::start_engine_transfer(app, op, sources, destination))
+    Ok(transfer_engine::start_engine_transfer(app, op, sources, destination, verify.unwrap_or(false)))
 }
 
 #[tauri::command]
@@ -69,6 +70,19 @@ pub fn get_transfer_progress(id: String) -> Result<TransferProgress, String> {
 #[tauri::command]
 pub fn list_transfers() -> Vec<TransferProgress> {
     transfer_engine::list_engine_transfers()
+}
+
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+
+/// Set global transfer speed cap. `bytes_per_sec` = 0 means unlimited.
+#[tauri::command]
+pub fn set_rate_limit(bytes_per_sec: u64) {
+    transfer_engine::set_rate_limit(bytes_per_sec);
+}
+
+#[tauri::command]
+pub fn get_rate_limit() -> u64 {
+    transfer_engine::get_rate_limit()
 }
 
 // ── Drive calibration commands ────────────────────────────────────────────────
@@ -135,6 +149,69 @@ pub fn create_folder(path: String, name: String) -> Result<String, String> {
     }
     fs::create_dir(&new_dir).map_err(|e| format!("Failed to create folder: {}", e))?;
     Ok(new_dir.display().to_string())
+}
+
+/// Create a new folder inside `parent_path` named `folder_name`, then move
+/// all `item_paths` into it. Returns the path of the created folder.
+#[tauri::command]
+pub fn new_folder_with_items(
+    app: AppHandle,
+    parent_path: String,
+    folder_name: String,
+    item_paths: Vec<String>,
+) -> Result<String, String> {
+    let parent = Path::new(&parent_path);
+    if !parent.is_dir() {
+        return Err(format!("Parent is not a directory: {}", parent_path));
+    }
+    // Create the folder (auto-number if name taken)
+    let mut new_dir = parent.join(&folder_name);
+    if new_dir.exists() {
+        let mut counter = 1u32;
+        loop {
+            new_dir = parent.join(format!("{} ({})", folder_name, counter));
+            if !new_dir.exists() { break; }
+            counter += 1;
+        }
+    }
+    fs::create_dir(&new_dir).map_err(|e| format!("Failed to create folder: {}", e))?;
+
+    let dest = new_dir.display().to_string();
+    if !item_paths.is_empty() {
+        // Move items into the new folder via the transfer engine (handles cross-drive correctly)
+        transfer_engine::start_engine_transfer(app, transfer_engine::TransferOp::Move, item_paths, dest.clone(), false);
+    }
+    Ok(dest)
+}
+
+/// Recreate the full directory tree of `source_path` under `dest_path`
+/// without copying any files. Useful for setting up parallel folder structures.
+/// Returns the number of directories created.
+#[tauri::command]
+pub fn mirror_folder_structure(source_path: String, dest_path: String) -> Result<u64, String> {
+    let src = std::path::Path::new(&source_path);
+    let dst = std::path::Path::new(&dest_path);
+    if !src.is_dir() {
+        return Err(format!("Source is not a directory: {}", source_path));
+    }
+    let mut count = 0u64;
+    let mut stack = vec![src.to_path_buf()];
+    while let Some(cur_src) = stack.pop() {
+        let rel = cur_src.strip_prefix(src).map_err(|e| e.to_string())?;
+        let cur_dst = dst.join(rel);
+        fs::create_dir_all(&cur_dst).map_err(|e| format!("Failed to create {}: {}", cur_dst.display(), e))?;
+        count += 1;
+        if let Ok(entries) = fs::read_dir(&cur_src) {
+            for entry in entries.flatten() {
+                let p = entry.path();
+                // Only recurse into real directories (follow symlinks to dirs too)
+                if fs::metadata(&p).map(|m| m.is_dir()).unwrap_or(false) {
+                    stack.push(p);
+                }
+            }
+        }
+    }
+    Ok(count)
 }
 
 #[tauri::command]

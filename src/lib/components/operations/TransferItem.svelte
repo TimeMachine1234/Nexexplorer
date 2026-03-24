@@ -64,6 +64,13 @@
   const progressVariant = $derived(
     t.status === "Completed" ? "success" : t.status === "Failed" ? "danger" : "default"
   );
+
+  // Verify bar percentage
+  const verifyPct = $derived(
+    t.verify && t.files_total > 0
+      ? Math.min(100, (t.verified_files / t.files_total) * 100)
+      : 0
+  );
 </script>
 
 <div
@@ -95,6 +102,15 @@
     {#if t.drive_concurrency > 1}
       <span class="ti-badge">{t.drive_concurrency}x</span>
     {/if}
+
+    {#if t.verify}
+      <span class="ti-badge ti-badge-verify">
+        <svg viewBox="0 0 11 11" fill="none" stroke="currentColor" stroke-width="1.3" width="11" height="11" style="flex-shrink:0">
+          <path d="M5.5 1L1.5 2.8v3.1c0 2 1.7 3.7 4 4.1 2.3-.4 4-2.1 4-4.1V2.8L5.5 1z" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        CRC32
+      </span>
+    {/if}
   </div>
 
   <!-- Calibrating notice -->
@@ -112,6 +128,16 @@
         style="width: {pct}%"
       ></div>
     </div>
+
+    <!-- Verification progress bar -->
+    {#if t.verify && t.status === "Running" && t.files_total > 0}
+      <div class="ti-verify-bar-row">
+        <div class="ti-verify-bar-track">
+          <div class="ti-verify-bar-fill" style="width: {verifyPct}%"></div>
+        </div>
+        <span class="ti-verify-label">verified</span>
+      </div>
+    {/if}
   {/if}
 
   <!-- Stats row -->
@@ -139,12 +165,12 @@
       <div class="ti-graph-row">
         <SpeedGraph samples={t.speed_history} width={120} height={30} />
         <span class="ti-files">
-          {t.files_done.toLocaleString()} / {t.files_total.toLocaleString()} files
+          {t.files_done.toLocaleString()} / {t.files_total.toLocaleString()} files{#if t.verify && t.verified_files > 0 && t.status === "Running"}<span class="ti-verified-count"> · {t.verified_files.toLocaleString()} verified</span>{/if}
         </span>
       </div>
     {:else}
       <div class="ti-files-only">
-        {t.files_done.toLocaleString()} / {t.files_total.toLocaleString()} files
+        {t.files_done.toLocaleString()} / {t.files_total.toLocaleString()} files{#if t.verify && t.verified_files > 0 && t.status === "Running"}<span class="ti-verified-count"> · {t.verified_files.toLocaleString()} verified</span>{/if}
       </div>
     {/if}
   {:else if t.status === "Completed"}
@@ -248,6 +274,19 @@
           </div>
         </div>
       {/if}
+      {#if t.verify_failed_files && t.verify_failed_files.length > 0}
+        <div class="ti-detail-row ti-detail-verify-failed">
+          <span class="ti-detail-label">Verify failed ({t.verify_failed_files.length})</span>
+          <div class="ti-failed-list">
+            {#each t.verify_failed_files.slice(0, 5) as f}
+              <div class="ti-verify-failed-file">{f}</div>
+            {/each}
+            {#if t.verify_failed_files.length > 5}
+              <div class="ti-failed-more">+{t.verify_failed_files.length - 5} more</div>
+            {/if}
+          </div>
+        </div>
+      {/if}
     </div>
   {/if}
 </div>
@@ -322,6 +361,15 @@
     flex-shrink: 0;
   }
 
+  /* Verify badge — same structure as ti-badge but success-colored */
+  .ti-badge-verify {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    color: var(--success);
+    background: color-mix(in srgb, var(--success) 12%, transparent);
+  }
+
   /* Calibrating */
   .ti-calibrating {
     font-size: 10px;
@@ -380,6 +428,39 @@
     to { background-position: 40px 0; }
   }
 
+  /* Verification progress bar */
+  .ti-verify-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: -3px;
+    margin-bottom: 5px;
+  }
+
+  .ti-verify-bar-track {
+    flex: 1;
+    height: 2px;
+    background: var(--border);
+    border-radius: var(--sq-full);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .ti-verify-bar-fill {
+    height: 100%;
+    background: var(--success);
+    border-radius: var(--sq-full);
+    transition: width 200ms ease-out;
+  }
+
+  .ti-verify-label {
+    font-size: 9.5px;
+    color: var(--success);
+    opacity: 0.75;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
   /* Stats */
   .ti-stats {
     display: flex;
@@ -422,6 +503,13 @@
     font-size: 10px;
     color: var(--text-dim);
     margin-bottom: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Verified count inline suffix */
+  .ti-verified-count {
+    color: var(--success);
+    opacity: 0.8;
     font-variant-numeric: tabular-nums;
   }
 
@@ -563,5 +651,19 @@
   .ti-failed-more {
     font-size: 10px;
     color: var(--text-dim);
+  }
+
+  /* Verify-failed block in details */
+  .ti-detail-verify-failed .ti-detail-label {
+    color: var(--warning);
+  }
+
+  .ti-verify-failed-file {
+    font-size: 10px;
+    color: var(--warning);
+    opacity: 0.8;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 </style>

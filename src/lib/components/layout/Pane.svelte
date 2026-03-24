@@ -39,6 +39,7 @@
   import { clipboard } from "../../stores/transfers";
   import { selectedFileForPreview, previewFileContext, previewArrowPath } from "../../stores/preview";
   import { dragBegin, dragState, dragSetTarget } from "$lib/stores/dragState";
+  import { processEntries } from "$lib/utils/entryProcessing";
   import { startTransfer } from "../../stores/transfers";
   import MovePicker from "$lib/components/operations/MovePicker.svelte";
   import { get } from "svelte/store";
@@ -76,6 +77,7 @@
 
   // ── Selection & context menu state ──
   let selectedPaths: Set<string> = $state(new Set());
+  let anchorPath: string | null = $state(null);
   let contextMenu: { x: number; y: number; path: string; entry: FileEntry } | null = $state(null);
   let renamingPath: string | null = $state(null);
   let renameValue: string = $state("");
@@ -130,16 +132,29 @@
 
   function handleSelect(path: string, entry: FileEntry, e: MouseEvent) {
     if (e.ctrlKey) {
+      anchorPath = path;
       selectedPaths = new Set(selectedPaths);
       if (selectedPaths.has(path)) selectedPaths.delete(path);
       else selectedPaths.add(path);
-    } else if (e.shiftKey) {
-      selectedPaths = new Set(selectedPaths);
-      selectedPaths.add(path);
+    } else if (e.shiftKey && anchorPath && tabData) {
+      // True range selection: find all items between anchor and clicked item
+      const dirPath = tabData.path.endsWith("\\") ? tabData.path : tabData.path + "\\";
+      const ordered = processEntries(tabData.entries, showHidden, tabData.filterText, tabData.sortBy, tabData.sortAsc);
+      const fullPaths = ordered.map((e) => dirPath + e.name);
+      const anchorIdx = fullPaths.indexOf(anchorPath);
+      const clickedIdx = fullPaths.indexOf(path);
+      if (anchorIdx >= 0 && clickedIdx >= 0) {
+        const lo = Math.min(anchorIdx, clickedIdx);
+        const hi = Math.max(anchorIdx, clickedIdx);
+        selectedPaths = new Set(fullPaths.slice(lo, hi + 1));
+      } else {
+        selectedPaths = new Set([path]);
+      }
+      // Shift+click does not move the anchor
     } else {
+      anchorPath = path;
       selectedPaths = new Set([path]);
     }
-    // Update preview store and file context
     if (selectedPaths.size === 1 && tabData) {
       const single = [...selectedPaths][0];
       selectedFileForPreview.set(single);
@@ -149,6 +164,11 @@
     } else {
       selectedFileForPreview.set(null);
     }
+  }
+
+  function handleLassoSelect(paths: Set<string>) {
+    selectedPaths = paths;
+    selectedFileForPreview.set(null);
   }
 
   function handleContextMenu(e: MouseEvent, path: string, entry: FileEntry) {
@@ -397,6 +417,17 @@
     dragBegin(paths, x, y);
   }
 
+  // Reset selection and anchor when the active tab's path changes (navigation)
+  let lastSelectionResetPath = "";
+  $effect(() => {
+    const t = tabData;
+    if (t && t.path !== lastSelectionResetPath) {
+      lastSelectionResetPath = t.path;
+      selectedPaths = new Set();
+      anchorPath = null;
+    }
+  });
+
   // Auto-load: when the active tab has no entries and isn't loading, fetch its directory
   let lastLoadedTabId = "";
   $effect(() => {
@@ -577,6 +608,7 @@
           onContextMenu={handleContextMenu}
           onSelect={handleSelect}
           onDragBegin={handleDragBegin}
+          onLassoSelect={handleLassoSelect}
         />
       {:else}
         <FileList
@@ -588,11 +620,13 @@
           {showHidden}
           filterText={tabData.filterText}
           {selectedPaths}
+          {anchorPath}
           onNavigate={(p) => navigateTo(p)}
           onOpenFile={openFile}
           onSortChange={handleSortChange}
           onContextMenu={handleContextMenu}
           onSelect={handleSelect}
+          onLassoSelect={handleLassoSelect}
           onDragBegin={handleDragBegin}
         />
       {/if}

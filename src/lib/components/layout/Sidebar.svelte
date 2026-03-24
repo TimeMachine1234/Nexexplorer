@@ -1,6 +1,7 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { homeDir as tauriHomeDir } from "@tauri-apps/api/path";
+  import { onDestroy } from "svelte";
   import SidebarSection from "./SidebarSection.svelte";
   import { pinnedFolders } from "../../stores/sidebar";
   import { HOME_PATH } from "../../stores/panes";
@@ -23,6 +24,8 @@
   const MAX_WIDTH = 400;
   const COLLAPSED_WIDTH = 0;
 
+  let _resizeCleanup: (() => void) | null = null;
+
   function onResizeStart(e: MouseEvent) {
     if (isCollapsed) return;
     e.preventDefault();
@@ -36,9 +39,14 @@
       isResizing = false;
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      _resizeCleanup = null;
     }
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
+    _resizeCleanup = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
   }
 
   // SVG icon paths (16x16 viewBox)
@@ -117,6 +125,11 @@
   function toggleSidebar() {
     isCollapsed = !isCollapsed;
   }
+
+  onDestroy(() => {
+    _resizeCleanup?.();
+    _resizeCleanup = null;
+  });
 
   // --- Drag-and-drop targets ---
   let sidebarDragTarget = $state<string | null>(null);

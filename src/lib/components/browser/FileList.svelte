@@ -5,6 +5,7 @@
   import { processEntries } from "../../utils/entryProcessing";
   import { settings } from "../../stores/settings";
   import { dragState, dragSetTarget } from "$lib/stores/dragState";
+  import { onDestroy } from "svelte";
 
   interface FileEntry {
     name: string;
@@ -29,9 +30,11 @@
     onContextMenu: (e: MouseEvent, path: string, entry: FileEntry) => void;
     onSelect: (path: string, entry: FileEntry, e: MouseEvent) => void;
     onDragBegin?: (path: string, x: number, y: number) => void;
+    onLassoSelect?: (paths: Set<string>) => void;
+    anchorPath?: string | null;
   }
 
-  let { entries, currentPath, sortByField, sortAscending, showHidden, filterText, selectedPaths, onNavigate, onOpenFile, onSortChange, onContextMenu, onSelect, onDragBegin }: Props = $props();
+  let { entries, currentPath, sortByField, sortAscending, showHidden, filterText, selectedPaths, onNavigate, onOpenFile, onSortChange, onContextMenu, onSelect, onDragBegin, onLassoSelect, anchorPath }: Props = $props();
 
   const ROW_HEIGHT = 26;
   const OVERSCAN = 10;
@@ -98,6 +101,20 @@
     }
   });
 
+  let lassoActive = $state(false);
+  let lassoStartClientX = $state(0);
+  let lassoStartClientY = $state(0);
+  let lassoCurrentClientX = $state(0);
+  let lassoCurrentClientY = $state(0);
+
+  let lassoLeft = $derived(Math.min(lassoStartClientX, lassoCurrentClientX));
+  let lassoTop = $derived(Math.min(lassoStartClientY, lassoCurrentClientY));
+  let lassoWidth = $derived(Math.abs(lassoCurrentClientX - lassoStartClientX));
+  let lassoHeight = $derived(Math.abs(lassoCurrentClientY - lassoStartClientY));
+
+  let _onWinMove: ((e: MouseEvent) => void) | null = null;
+  let _onWinUp: ((e: MouseEvent) => void) | null = null;
+
   let fileRowDragTarget = $state<string | null>(null);
 
   function handleRowEnter(entry: FileEntry, fullPath: string) {
@@ -112,6 +129,63 @@
       dragSetTarget(null);
     }
   }
+
+  function updateLassoSelection() {
+    if (!containerEl || !onLassoSelect) return;
+    const rect = containerEl.getBoundingClientRect();
+    const docTop = Math.min(lassoStartClientY, lassoCurrentClientY) - rect.top + scrollTop;
+    const docBottom = Math.max(lassoStartClientY, lassoCurrentClientY) - rect.top + scrollTop;
+    const dirPath = currentPath.endsWith("\\") ? currentPath : currentPath + "\\";
+    const selected = new Set<string>();
+    processedEntries.forEach((entry, i) => {
+      const itemTop = i * ROW_HEIGHT;
+      const itemBottom = itemTop + ROW_HEIGHT;
+      if (itemBottom > docTop && itemTop < docBottom) {
+        selected.add(dirPath + entry.name);
+      }
+    });
+    onLassoSelect(selected);
+  }
+
+  function onContainerMouseDown(e: MouseEvent) {
+    if (e.button !== 0) return;
+    // Only start lasso when clicking on background, not on a file item
+    const target = e.target as HTMLElement;
+    const isBackground =
+      target === containerEl ||
+      target.classList.contains("virtual-spacer") ||
+      target.classList.contains("virtual-window");
+    if (!isBackground) return;
+
+    e.preventDefault();
+    lassoStartClientX = e.clientX;
+    lassoStartClientY = e.clientY;
+    lassoCurrentClientX = e.clientX;
+    lassoCurrentClientY = e.clientY;
+    lassoActive = true;
+
+    if (!e.ctrlKey && onLassoSelect) onLassoSelect(new Set());
+
+    _onWinMove = (ev: MouseEvent) => {
+      lassoCurrentClientX = ev.clientX;
+      lassoCurrentClientY = ev.clientY;
+      updateLassoSelection();
+    };
+    _onWinUp = () => {
+      lassoActive = false;
+      window.removeEventListener("mousemove", _onWinMove!);
+      window.removeEventListener("mouseup", _onWinUp!);
+      _onWinMove = null;
+      _onWinUp = null;
+    };
+    window.addEventListener("mousemove", _onWinMove);
+    window.addEventListener("mouseup", _onWinUp);
+  }
+
+  onDestroy(() => {
+    if (_onWinMove) window.removeEventListener("mousemove", _onWinMove);
+    if (_onWinUp) window.removeEventListener("mouseup", _onWinUp);
+  });
 </script>
 
 <div class="file-list-header">
@@ -134,7 +208,14 @@
   class="file-list-container"
   bind:this={containerEl}
   onscroll={handleScroll}
+  onmousedown={onContainerMouseDown}
 >
+  {#if lassoActive && lassoWidth > 4 && lassoHeight > 4}
+    <div
+      class="lasso-rect"
+      style="left:{lassoLeft}px; top:{lassoTop}px; width:{lassoWidth}px; height:{lassoHeight}px; position:fixed; pointer-events:none;"
+    ></div>
+  {/if}
   <div class="virtual-spacer" style="height: {totalHeight}px;">
     <div class="virtual-window" style="transform: translateY({offsetY}px);">
       {#each visibleEntries as entry (entry.name)}
@@ -236,6 +317,7 @@
     overflow-x: hidden;
     height: 100%;
     background-color: var(--bg);
+    padding-bottom: 80px;
   }
 
   .virtual-spacer {
@@ -248,5 +330,12 @@
     top: 0;
     left: 0;
     right: 0;
+  }
+
+  .lasso-rect {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border: 1px solid var(--accent);
+    border-radius: 2px;
+    z-index: 100;
   }
 </style>

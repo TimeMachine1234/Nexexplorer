@@ -64,6 +64,8 @@
   const MIN_WIDTH = 260;
   const MAX_WIDTH = 800;
 
+  let _resizeCleanup: (() => void) | null = null;
+
   function onResizeStart(e: MouseEvent) {
     e.preventDefault();
     isResizing = true;
@@ -77,9 +79,14 @@
       isResizing = false;
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
+      _resizeCleanup = null;
     }
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
+    _resizeCleanup = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
   }
 
   // --- Image state ---
@@ -261,6 +268,8 @@
   }
 
   onDestroy(() => {
+    _resizeCleanup?.();
+    _resizeCleanup = null;
     if (_wheelRaf) { cancelAnimationFrame(_wheelRaf); _wheelRaf = null; }
     if (_loadDebounce) { clearTimeout(_loadDebounce); _loadDebounce = null; }
     cleanupActiveMedia();

@@ -10,7 +10,10 @@
 //! - Pre-scan conflict detection (batch dialog, non-blocking)
 //! - Per-file retry with exponential backoff
 //! - Adaptive copy (tiny=whole-file, medium=buffered, large=mmap)
+//! - Long path support (>260 chars) via \\?\ prefix on Windows
+//! - Optional post-copy CRC32 verification
 
+use crc32fast::Hasher as Crc32Hasher;
 use crossbeam_channel::{bounded, Receiver, Sender};
 use memmap2::{Mmap, MmapMut};
 use serde::{Deserialize, Serialize};
@@ -22,6 +25,43 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter};
+
+// ── Long-path helpers ────────────────────────────────────────────────────────
+
+/// On Windows, paths longer than MAX_PATH (260) require the `\\?\` prefix
+/// to bypass the legacy limit. This function adds it when needed.
+#[cfg(target_os = "windows")]
+fn long_path(p: &Path) -> std::borrow::Cow<'_, Path> {
+    let s = p.to_string_lossy();
+    if s.len() > 260 && !s.starts_with(r"\\?\") && !s.starts_with(r"\\.\") {
+        let prefixed = format!(r"\\?\{}", s);
+        std::borrow::Cow::Owned(PathBuf::from(prefixed))
+    } else {
+        std::borrow::Cow::Borrowed(p)
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn long_path(p: &Path) -> std::borrow::Cow<Path> {
+    std::borrow::Cow::Borrowed(p)
+}
+
+// ── CRC32 verification ────────────────────────────────────────────────────────
+
+/// Compute CRC32 of a file. Returns None on I/O error.
+fn crc32_file(path: &Path) -> Option<u32> {
+    use std::io::Read;
+    let path = long_path(path);
+    let mut file = fs::File::open(path.as_ref()).ok()?;
+    let mut hasher = Crc32Hasher::new();
+    let mut buf = vec![0u8; 256 * 1024];
+    loop {
+        let n = file.read(&mut buf).ok()?;
+        if n == 0 { break; }
+        hasher.update(&buf[..n]);
+    }
+    Some(hasher.finalize())
+}
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
@@ -78,6 +118,9 @@ pub struct TransferProgress {
     pub failed_files: Vec<String>,
     pub drive_concurrency: u8,
     pub calibrating: bool,
+    pub verify: bool,
+    pub verified_files: u64,
+    pub verify_failed_files: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -142,6 +185,30 @@ lazy_static::lazy_static! {
 
 static TRANSFER_BUDGET: AtomicU64 = AtomicU64::new(256 * 1024 * 1024);
 static TX_COUNTER: AtomicU64 = AtomicU64::new(1);
+/// Global rate limit in bytes/sec. 0 = unlimited.
+static RATE_LIMIT_BPS: AtomicU64 = AtomicU64::new(0);
+
+pub fn set_rate_limit(bytes_per_sec: u64) {
+    RATE_LIMIT_BPS.store(bytes_per_sec, Ordering::Relaxed);
+}
+
+pub fn get_rate_limit() -> u64 {
+    RATE_LIMIT_BPS.load(Ordering::Relaxed)
+}
+
+/// Sleep the calling thread enough to honour the global rate limit after writing `bytes`.
+/// `chunk_start` is the Instant before the chunk write; used to measure actual elapsed time.
+#[inline]
+fn throttle_rate(bytes: u64, chunk_start: Instant) {
+    let limit = RATE_LIMIT_BPS.load(Ordering::Relaxed);
+    if limit == 0 { return; }
+    // How long this chunk *should* have taken at the target rate
+    let target_ns = bytes * 1_000_000_000 / limit;
+    let elapsed_ns = chunk_start.elapsed().as_nanos() as u64;
+    if target_ns > elapsed_ns {
+        std::thread::sleep(Duration::from_nanos(target_ns - elapsed_ns));
+    }
+}
 
 pub fn init_engine(app_data_dir: PathBuf) {
     let store = CalibrationStore::load(&app_data_dir);
@@ -355,12 +422,14 @@ fn spawn_worker_count(profile: &DriveProfile, pressure: MemoryPressure) -> u8 {
 struct AtomicCounters {
     bytes_done: AtomicU64,
     files_done: AtomicU64,
+    verified_files: AtomicU64,
 }
 
 struct ControlBlock {
     status: TransferStatus,
     current_file: String,
     failed_files: Vec<String>,
+    verify_failed_files: Vec<String>,
     error: Option<String>,
     calibrating: bool,
     per_file_resolution: HashMap<String, ConflictResolution>,
@@ -379,6 +448,7 @@ struct EngineTransfer {
     control: Arc<Mutex<ControlBlock>>,
     pause_sync: Arc<(Mutex<bool>, Condvar)>,
     conflict_sync: Arc<(Mutex<bool>, Condvar)>,
+    verify: bool,
 }
 
 // ── Copy utilities ────────────────────────────────────────────────────────────
@@ -420,26 +490,28 @@ fn copy_file_adaptive(
     pause_sync: &Arc<(Mutex<bool>, Condvar)>,
     counters: &Arc<AtomicCounters>,
 ) -> Result<(), CopyErr> {
-    let file_size = src.metadata().map(|m| m.len()).unwrap_or(0);
+    let src_lp = long_path(src);
+    let dst_lp = long_path(dst);
+    let file_size = src_lp.metadata().map(|m| m.len()).unwrap_or(0);
 
     if file_size <= SMALL_FILE_THRESHOLD {
         // Tier 1: entire file into memory, single write
-        let data = fs::read(src).map_err(CopyErr::Io)?;
+        let data = fs::read(src_lp.as_ref()).map_err(CopyErr::Io)?;
         check_pause_cancel(control, pause_sync)?;
-        fs::write(dst, &data).map_err(CopyErr::Io)?;
+        fs::write(dst_lp.as_ref(), &data).map_err(CopyErr::Io)?;
         counters.bytes_done.fetch_add(file_size, Ordering::Relaxed);
     } else if file_size > LARGE_FILE_THRESHOLD {
         // Tier 3: memory-mapped — OS handles page-in, saturates any NVMe
-        copy_mmap(src, dst, file_size, control, pause_sync, counters)?;
+        copy_mmap(src_lp.as_ref(), dst_lp.as_ref(), file_size, control, pause_sync, counters)?;
     } else {
         // Tier 2: buffered copy with calibrated buffer size
-        copy_buffered(src, dst, buf_size, control, pause_sync, counters)?;
+        copy_buffered(src_lp.as_ref(), dst_lp.as_ref(), buf_size, control, pause_sync, counters)?;
     }
 
     // Preserve modified time
-    if let Ok(meta) = fs::metadata(src) {
+    if let Ok(meta) = fs::metadata(src_lp.as_ref()) {
         if let Ok(mtime) = meta.modified() {
-            let _ = filetime::set_file_mtime(dst, filetime::FileTime::from_system_time(mtime));
+            let _ = filetime::set_file_mtime(dst_lp.as_ref(), filetime::FileTime::from_system_time(mtime));
         }
     }
 
@@ -454,17 +526,19 @@ fn copy_buffered(
     pause_sync: &Arc<(Mutex<bool>, Condvar)>,
     counters: &Arc<AtomicCounters>,
 ) -> Result<(), CopyErr> {
-    let mut reader = fs::File::open(src).map_err(CopyErr::Io)?;
+    let mut reader = fs::File::open(src).map_err(CopyErr::Io)?; // already long_path'd by caller
     let mut writer = fs::File::create(dst).map_err(CopyErr::Io)?;
     let mut buf = vec![0u8; buf_size];
     loop {
         check_pause_cancel(control, pause_sync)?;
+        let chunk_start = Instant::now();
         let n = reader.read(&mut buf).map_err(CopyErr::Io)?;
         if n == 0 {
             break;
         }
         writer.write_all(&buf[..n]).map_err(CopyErr::Io)?;
         counters.bytes_done.fetch_add(n as u64, Ordering::Relaxed);
+        throttle_rate(n as u64, chunk_start);
     }
     Ok(())
 }
@@ -494,9 +568,12 @@ fn copy_mmap(
     let total = size as usize;
     while offset < total {
         check_pause_cancel(control, pause_sync)?;
+        let chunk_start = Instant::now();
         let end = (offset + CHUNK).min(total);
         dst_map[offset..end].copy_from_slice(&src_map[offset..end]);
-        counters.bytes_done.fetch_add((end - offset) as u64, Ordering::Relaxed);
+        let written = (end - offset) as u64;
+        counters.bytes_done.fetch_add(written, Ordering::Relaxed);
+        throttle_rate(written, chunk_start);
         offset = end;
     }
     dst_map.flush().map_err(CopyErr::Io)?;
@@ -507,6 +584,7 @@ fn copy_with_retry(
     src: &Path,
     dst: &Path,
     buf_size: usize,
+    verify: bool,
     control: &Arc<Mutex<ControlBlock>>,
     pause_sync: &Arc<(Mutex<bool>, Condvar)>,
     counters: &Arc<AtomicCounters>,
@@ -514,19 +592,45 @@ fn copy_with_retry(
     // Returns true = success, false = failed (or cancelled — check status)
     for attempt in 0u32..3 {
         match copy_file_adaptive(src, dst, buf_size, control, pause_sync, counters) {
-            Ok(()) => return true,
+            Ok(()) => {
+                if verify {
+                    let src_crc = crc32_file(src);
+                    let dst_crc = crc32_file(dst);
+                    match (src_crc, dst_crc) {
+                        (Some(a), Some(b)) if a == b => {
+                            counters.verified_files.fetch_add(1, Ordering::Relaxed);
+                        }
+                        _ => {
+                            // CRC mismatch or read error — retry if attempts remain
+                            let _ = fs::remove_file(&long_path(dst));
+                            if attempt < 2 {
+                                std::thread::sleep(Duration::from_secs((attempt + 1) as u64));
+                                continue;
+                            }
+                            let mut cb = control.lock().unwrap();
+                            if cb.verify_failed_files.len() < 1000 {
+                                cb.verify_failed_files.push(src.display().to_string());
+                            }
+                            return false;
+                        }
+                    }
+                }
+                return true;
+            }
             Err(CopyErr::Cancelled) => {
-                let _ = fs::remove_file(dst); // remove partial file on cancel
+                let _ = fs::remove_file(&long_path(dst)); // remove partial file on cancel
                 return false;
             }
             Err(CopyErr::Io(_)) if attempt < 2 => {
-                let _ = fs::remove_file(dst);
+                let _ = fs::remove_file(&long_path(dst));
                 std::thread::sleep(Duration::from_secs((attempt + 1) as u64));
             }
             Err(CopyErr::Io(e)) => {
                 let mut cb = control.lock().unwrap();
-                cb.failed_files.push(format!("{}: {}", src.display(), e));
-                let _ = fs::remove_file(dst);
+                if cb.failed_files.len() < 1000 {
+                    cb.failed_files.push(format!("{}: {}", src.display(), e));
+                }
+                let _ = fs::remove_file(&long_path(dst));
                 return false;
             }
         }
@@ -734,11 +838,18 @@ struct FileJob {
 /// `dst` is the EXACT destination path (not a directory to copy INTO).
 /// Uses an explicit stack instead of recursion to prevent stack overflow
 /// on deeply nested directory trees.
+/// Symlinks are resolved: symlinks to files are copied as regular files;
+/// symlinks to directories are followed (contents copied); dangling symlinks are skipped.
 fn expand_to_jobs(src: &Path, dst: &Path, tx: &Sender<FileJob>) {
     // stack holds (src_dir, dst_dir) pairs to process
     let mut stack: Vec<(PathBuf, PathBuf)> = vec![(src.to_path_buf(), dst.to_path_buf())];
     while let Some((cur_src, cur_dst)) = stack.pop() {
-        if cur_src.is_dir() {
+        // Resolve symlinks: get the real metadata (follow the link)
+        let meta = match fs::metadata(&cur_src) {
+            Ok(m) => m,
+            Err(_) => continue, // dangling symlink or permission error — skip
+        };
+        if meta.is_dir() {
             let _ = fs::create_dir_all(&cur_dst);
             if let Ok(entries) = fs::read_dir(&cur_src) {
                 for entry in entries.flatten() {
@@ -748,6 +859,7 @@ fn expand_to_jobs(src: &Path, dst: &Path, tx: &Sender<FileJob>) {
                 }
             }
         } else {
+            // Regular file or symlink to a file — copy the content
             let _ = tx.send(FileJob { src: cur_src, dst: cur_dst });
         }
     }
@@ -760,17 +872,20 @@ pub fn start_engine_transfer(
     op: TransferOp,
     sources: Vec<String>,
     destination: String,
+    verify: bool,
 ) -> String {
     let id = format!("tx_{}", TX_COUNTER.fetch_add(1, Ordering::Relaxed));
 
     let counters = Arc::new(AtomicCounters {
         bytes_done: AtomicU64::new(0),
         files_done: AtomicU64::new(0),
+        verified_files: AtomicU64::new(0),
     });
     let control = Arc::new(Mutex::new(ControlBlock {
         status: TransferStatus::Queued,
         current_file: String::new(),
         failed_files: Vec::new(),
+        verify_failed_files: Vec::new(),
         error: None,
         calibrating: false,
         per_file_resolution: HashMap::new(),
@@ -791,6 +906,7 @@ pub fn start_engine_transfer(
         control,
         pause_sync,
         conflict_sync,
+        verify,
     });
 
     ENGINE_TRANSFERS.lock().unwrap().insert(id.clone(), et.clone());
@@ -806,6 +922,7 @@ fn run_orchestrator(app: AppHandle, et: Arc<EngineTransfer>) {
     let sources = et.sources.clone();
     let destination = et.destination.clone();
     let dest_path = PathBuf::from(&destination);
+    let started_at = unix_now();
 
     // 1. Set Running immediately so the UI shows activity at once
     et.control.lock().unwrap().status = TransferStatus::Running;
@@ -937,6 +1054,7 @@ fn run_orchestrator(app: AppHandle, et: Arc<EngineTransfer>) {
         let control = et.control.clone();
         let pause_sync = et.pause_sync.clone();
         let op2 = op.clone();
+        let verify2 = et.verify;
 
         let handle = std::thread::spawn(move || {
             while let Ok(job) = rx.recv() {
@@ -946,7 +1064,7 @@ fn run_orchestrator(app: AppHandle, et: Arc<EngineTransfer>) {
                 }
 
                 let ok = copy_with_retry(
-                    &job.src, &job.dst, buf_size,
+                    &job.src, &job.dst, buf_size, verify2,
                     &control, &pause_sync, &counters,
                 );
 
@@ -974,7 +1092,7 @@ fn run_orchestrator(app: AppHandle, et: Arc<EngineTransfer>) {
     {
         let mut cb = et.control.lock().unwrap();
         if cb.status != TransferStatus::Cancelled {
-            cb.status = if cb.failed_files.is_empty() {
+            cb.status = if cb.failed_files.is_empty() && cb.verify_failed_files.is_empty() {
                 TransferStatus::Completed
             } else {
                 TransferStatus::Failed
@@ -987,6 +1105,26 @@ fn run_orchestrator(app: AppHandle, et: Arc<EngineTransfer>) {
     }
 
     let _ = emitter_handle.join();
+
+    // Write transfer log entry
+    {
+        let cb = et.control.lock().unwrap();
+        write_transfer_log(
+            &id,
+            &op,
+            &sources,
+            &destination,
+            &cb.status,
+            et.counters.files_done.load(Ordering::Relaxed),
+            et.files_total.load(Ordering::Relaxed),
+            et.counters.bytes_done.load(Ordering::Relaxed),
+            et.bytes_total.load(Ordering::Relaxed),
+            started_at,
+            &cb.failed_files,
+            &cb.verify_failed_files,
+        );
+    }
+
     // Remove from global map to prevent memory leak over long sessions
     ENGINE_TRANSFERS.lock().unwrap().remove(&id);
 }
@@ -1003,16 +1141,19 @@ fn run_emitter(app: AppHandle, et: Arc<EngineTransfer>, id: String) {
         let files_total = et.files_total.load(Ordering::Relaxed);
         let drive_concurrency = et.drive_concurrency.load(Ordering::Relaxed) as u8;
 
-        let (status, current_file, error, failed_files, calibrating) = {
+        let verified_files = et.counters.verified_files.load(Ordering::Relaxed);
+        let (status, current_file, error, failed_files, verify_failed_files, calibrating) = {
             let cb = et.control.lock().unwrap();
             (
                 cb.status.clone(),
                 cb.current_file.clone(),
                 cb.error.clone(),
                 cb.failed_files.clone(),
+                cb.verify_failed_files.clone(),
                 cb.calibrating,
             )
         };
+        let failed_count = failed_files.len() + verify_failed_files.len();
 
         speed.update(bytes_done);
         let (eta, confidence) = speed.compute_eta(bytes_done, bytes_total);
@@ -1036,6 +1177,9 @@ fn run_emitter(app: AppHandle, et: Arc<EngineTransfer>, id: String) {
             failed_files,
             drive_concurrency,
             calibrating,
+            verify: et.verify,
+            verified_files,
+            verify_failed_files,
         };
 
         let _ = app.emit("transfer-progress", &progress);
@@ -1044,6 +1188,37 @@ fn run_emitter(app: AppHandle, et: Arc<EngineTransfer>, id: String) {
             status,
             TransferStatus::Completed | TransferStatus::Failed | TransferStatus::Cancelled
         ) {
+            // Emit a dedicated done event for native toast notifications
+            let op_label = match et.op { TransferOp::Copy => "Copy", TransferOp::Move => "Move" };
+            let src_name = et.sources.first()
+                .and_then(|s| std::path::Path::new(s).file_name())
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_else(|| format!("{} item(s)", et.sources.len()));
+            let extra = if et.sources.len() > 1 {
+                format!(" (+{} more)", et.sources.len() - 1)
+            } else {
+                String::new()
+            };
+            let (title, body) = match status {
+                TransferStatus::Completed => (
+                    format!("{} complete", op_label),
+                    format!("{}{} → {}", src_name, extra, et.destination),
+                ),
+                TransferStatus::Failed => (
+                    format!("{} finished with errors", op_label),
+                    format!("{} file(s) failed — check transfer log", failed_count),
+                ),
+                _ => (
+                    format!("{} cancelled", op_label),
+                    String::new(),
+                ),
+            };
+            let _ = app.emit("transfer-done", serde_json::json!({
+                "id": id,
+                "status": format!("{:?}", status),
+                "title": title,
+                "body": body,
+            }));
             break;
         }
     }
@@ -1129,6 +1304,9 @@ pub fn get_engine_progress(id: &str) -> Option<TransferProgress> {
         failed_files: cb.failed_files.clone(),
         drive_concurrency: et.drive_concurrency.load(Ordering::Relaxed) as u8,
         calibrating: cb.calibrating,
+        verify: et.verify,
+        verified_files: et.counters.verified_files.load(Ordering::Relaxed),
+        verify_failed_files: cb.verify_failed_files.clone(),
     })
 }
 
@@ -1156,6 +1334,9 @@ pub fn list_engine_transfers() -> Vec<TransferProgress> {
             failed_files: cb.failed_files.clone(),
             drive_concurrency: et.drive_concurrency.load(Ordering::Relaxed) as u8,
             calibrating: cb.calibrating,
+            verify: et.verify,
+            verified_files: et.counters.verified_files.load(Ordering::Relaxed),
+            verify_failed_files: cb.verify_failed_files.clone(),
         })
     }).collect()
 }
@@ -1167,4 +1348,72 @@ fn unix_now() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0)
+}
+
+fn format_datetime(unix_secs: u64) -> String {
+    let dt = chrono::DateTime::from_timestamp(unix_secs as i64, 0);
+    match dt {
+        Some(dt) => dt.format("%Y-%m-%d %H:%M:%S UTC").to_string(),
+        None => unix_secs.to_string(),
+    }
+}
+
+/// Write a JSON log entry for a completed/failed/cancelled transfer.
+/// Log file: <app_data_dir>/transfer_logs/YYYY-MM-DD.json  (one file per day, appended as a JSON array)
+fn write_transfer_log(
+    id: &str,
+    op: &TransferOp,
+    sources: &[String],
+    destination: &str,
+    status: &TransferStatus,
+    files_done: u64,
+    files_total: u64,
+    bytes_done: u64,
+    bytes_total: u64,
+    started_at: u64,
+    failed_files: &[String],
+    verify_failed_files: &[String],
+) {
+    let app_data = match APP_DATA_DIR.lock().unwrap().clone() {
+        Some(d) => d,
+        None => return,
+    };
+
+    let now = unix_now();
+    let log_dir = app_data.join("transfer_logs");
+    let _ = fs::create_dir_all(&log_dir);
+
+    // One log file per calendar day
+    let day = chrono::DateTime::from_timestamp(now as i64, 0)
+        .map(|dt| dt.format("%Y-%m-%d").to_string())
+        .unwrap_or_else(|| "unknown".to_string());
+    let log_path = log_dir.join(format!("{}.json", day));
+
+    let entry = serde_json::json!({
+        "id": id,
+        "op": format!("{:?}", op),
+        "status": format!("{:?}", status),
+        "sources": sources,
+        "destination": destination,
+        "files_done": files_done,
+        "files_total": files_total,
+        "bytes_done": bytes_done,
+        "bytes_total": bytes_total,
+        "started_at": format_datetime(started_at),
+        "finished_at": format_datetime(now),
+        "duration_seconds": now.saturating_sub(started_at),
+        "failed_files": failed_files,
+        "verify_failed_files": verify_failed_files,
+    });
+
+    // Read existing array (or start fresh), append entry, write back
+    let mut entries: Vec<serde_json::Value> = fs::read_to_string(&log_path)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default();
+    entries.push(entry);
+
+    if let Ok(json) = serde_json::to_string_pretty(&entries) {
+        let _ = fs::write(&log_path, json);
+    }
 }

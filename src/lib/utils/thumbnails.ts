@@ -9,8 +9,10 @@ interface ThumbResult {
 
 // Module-level cache: file path → displayable asset URL (convertFileSrc applied).
 // Persists across navigation so thumbnails appear instantly when revisiting folders.
+// Capped at MAX_CACHE_ENTRIES with FIFO eviction to bound memory usage.
 const cache = new Map<string, string>();
 const inFlight = new Set<string>();
+const MAX_CACHE_ENTRIES = 500;
 
 const BATCH_SIZE = 20;
 
@@ -39,6 +41,10 @@ export async function requestThumbnails(
         inFlight.delete(r.path);
         if (r.thumb_path) {
           const url = convertFileSrc(r.thumb_path);
+          if (cache.size >= MAX_CACHE_ENTRIES) {
+            // FIFO eviction: remove oldest entry
+            cache.delete(cache.keys().next().value!);
+          }
           cache.set(r.path, url);
           onResult(r.path, url);
         }

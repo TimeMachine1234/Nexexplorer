@@ -40,9 +40,9 @@ pub(crate) fn init_db(conn: &Connection) {
         "
         PRAGMA journal_mode = WAL;
         PRAGMA synchronous = NORMAL;
-        PRAGMA cache_size = -65536;
+        PRAGMA cache_size = -8192;
         PRAGMA temp_store = MEMORY;
-        PRAGMA mmap_size = 536870912;
+        PRAGMA mmap_size = 0;
         ",
     )
     .ok();
