@@ -121,6 +121,8 @@ pub fn run() {
             commands::operations::rename_item,
             commands::operations::create_folder,
             commands::operations::create_file,
+            commands::operations::get_shell_new_items,
+            commands::operations::create_shell_new_item,
             commands::operations::new_folder_with_items,
             commands::operations::mirror_folder_structure,
             commands::preview::get_file_metadata,

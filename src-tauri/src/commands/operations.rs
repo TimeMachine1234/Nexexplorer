@@ -248,3 +248,176 @@ pub fn create_file(path: String, name: String) -> Result<String, String> {
     fs::File::create(&new_file).map_err(|e| format!("Failed to create file: {}", e))?;
     Ok(new_file.display().to_string())
 }
+
+// ── Shell New Items ────────────────────────────────────────────────────────────
+
+#[derive(serde::Serialize, Clone)]
+pub struct ShellNewItem {
+    pub ext: String,
+    pub display_name: String,
+}
+
+/// Reads HKEY_CLASSES_ROOT for all extensions that have a ShellNew subkey,
+/// returning their friendly display names. Used to populate the "New" menu
+/// just like Windows Explorer.
+///
+/// Windows uses three structures (checked in order):
+///   1. HKCR\.ext\ShellNew                  — direct (e.g. .lnk, .contact)
+///   2. HKCR\.ext\{ProgID}\ShellNew         — nested  (e.g. .docx\Word.Document.12\ShellNew)
+///   3. HKCR\{ProgID}\ShellNew              — via separate ProgID key (older apps)
+///
+/// Additionally, Text Document and Bitmap Image are hardcoded because Windows 11
+/// removed their ShellNew registry entries (Notepad/Paint are now Store apps).
+#[tauri::command]
+pub fn get_shell_new_items() -> Vec<ShellNewItem> {
+    #[cfg(target_os = "windows")]
+    {
+        use winreg::enums::*;
+        use winreg::RegKey;
+
+        let mut items = Vec::new();
+        let hkcr = RegKey::predef(HKEY_CLASSES_ROOT);
+
+        // Hardcoded builtins that Windows 11 no longer registers via ShellNew
+        items.push(ShellNewItem { ext: ".txt".into(), display_name: "Text Document".into() });
+        items.push(ShellNewItem { ext: ".bmp".into(), display_name: "Bitmap Image".into() });
+
+        for key_name in hkcr.enum_keys().filter_map(|r| r.ok()) {
+            if !key_name.starts_with('.') {
+                continue;
+            }
+            // Skip the builtins we already added
+            if key_name == ".txt" || key_name == ".bmp" {
+                continue;
+            }
+            let Ok(ext_key) = hkcr.open_subkey(&key_name) else { continue };
+
+            let prog_id: String = ext_key.get_value("").unwrap_or_default();
+
+            // 1. Direct: .ext\ShellNew
+            // 2. Nested: .ext\{ProgID}\ShellNew  (most Office + Windows items)
+            // 3. Indirect: {ProgID}\ShellNew      (older/third-party apps)
+            let found = ext_key.open_subkey("ShellNew")
+                .ok()
+                .map(|sn| (sn, prog_id.clone()))
+                .or_else(|| {
+                    // Try every subkey of .ext looking for one that has \ShellNew
+                    ext_key.enum_keys().filter_map(|r| r.ok()).find_map(|sub| {
+                        ext_key.open_subkey(format!("{}\\ShellNew", sub))
+                            .ok()
+                            .map(|sn| (sn, sub))
+                    })
+                })
+                .or_else(|| {
+                    if !prog_id.is_empty() {
+                        hkcr.open_subkey(format!("{}\\ShellNew", prog_id))
+                            .ok()
+                            .map(|sn| (sn, prog_id.clone()))
+                    } else {
+                        None
+                    }
+                });
+
+            let Some((shell_new, effective_prog_id)) = found else { continue };
+
+            // Skip Command-only entries — those launch external wizards (shortcut wizard, etc.)
+            let has_creatable = shell_new.get_raw_value("NullFile").is_ok()
+                || shell_new.get_value::<String, _>("NullFile").is_ok()
+                || shell_new.get_value::<String, _>("FileName").is_ok()
+                || shell_new.get_raw_value("Data").is_ok();
+            let has_command = shell_new.get_value::<String, _>("Command").is_ok();
+            if !has_creatable && has_command {
+                continue;
+            }
+
+            // Resolve friendly name via effective ProgID → default value → fallback
+            let display_name = if !effective_prog_id.is_empty() {
+                if let Ok(prog_key) = hkcr.open_subkey(&effective_prog_id) {
+                    let n: String = prog_key.get_value("").unwrap_or_default();
+                    if n.is_empty() {
+                        format!("{} File", key_name[1..].to_uppercase())
+                    } else {
+                        n
+                    }
+                } else {
+                    format!("{} File", key_name[1..].to_uppercase())
+                }
+            } else {
+                format!("{} File", key_name[1..].to_uppercase())
+            };
+
+            items.push(ShellNewItem { ext: key_name, display_name });
+        }
+        items
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        vec![]
+    }
+}
+
+/// Creates a new file using the correct ShellNew method for the extension:
+///   - FileName  → copy the registered template file
+///   - Data      → write the registered binary payload
+///   - NullFile  → create an empty file (fallback for all others)
+#[tauri::command]
+pub fn create_shell_new_item(parent_path: String, name: String, ext: String) -> Result<String, String> {
+    let parent = Path::new(&parent_path);
+    if !parent.is_dir() {
+        return Err(format!("Parent is not a directory: {}", parent_path));
+    }
+    let new_file = parent.join(&name);
+    if new_file.exists() {
+        return Err(format!("'{}' already exists", name));
+    }
+
+    #[cfg(target_os = "windows")]
+    if !ext.is_empty() {
+        use winreg::enums::*;
+        use winreg::RegKey;
+
+        let hkcr = RegKey::predef(HKEY_CLASSES_ROOT);
+
+        // Mirror the same three-way lookup used in get_shell_new_items
+        let shell_new = hkcr.open_subkey(&ext).ok().and_then(|ext_key| {
+            let prog_id: String = ext_key.get_value("").unwrap_or_default();
+            ext_key.open_subkey("ShellNew").ok()
+                .or_else(|| {
+                    ext_key.enum_keys().filter_map(|r| r.ok()).find_map(|sub| {
+                        ext_key.open_subkey(format!("{}\\ShellNew", sub)).ok()
+                    })
+                })
+                .or_else(|| {
+                    if !prog_id.is_empty() {
+                        hkcr.open_subkey(format!("{}\\ShellNew", prog_id)).ok()
+                    } else {
+                        None
+                    }
+                })
+        });
+
+        if let Some(shell_new) = shell_new {
+            // Template file method
+            if let Ok(template_path) = shell_new.get_value::<String, _>("FileName") {
+                if !template_path.is_empty() {
+                    let tp = Path::new(&template_path);
+                    if tp.exists() {
+                        fs::copy(tp, &new_file)
+                            .map_err(|e| format!("Failed to copy template: {}", e))?;
+                        return Ok(new_file.display().to_string());
+                    }
+                }
+            }
+            // Binary data method
+            if let Ok(reg_val) = shell_new.get_raw_value("Data") {
+                fs::write(&new_file, &reg_val.bytes)
+                    .map_err(|e| format!("Failed to write data: {}", e))?;
+                return Ok(new_file.display().to_string());
+            }
+        }
+    }
+
+    // NullFile / fallback: empty file
+    fs::File::create(&new_file).map_err(|e| format!("Failed to create file: {}", e))?;
+    Ok(new_file.display().to_string())
+}

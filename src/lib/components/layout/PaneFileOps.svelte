@@ -128,29 +128,27 @@
     }
   }
 
-  export async function doNewFolder() {
+  export async function doNewFolder(name: string) {
+    if (!name.trim()) return;
     const ids = getLiveTab();
     if (!ids) return;
-    const name = prompt("New folder name:");
-    if (!name?.trim()) return;
     try {
       await invoke("create_folder", { path: ids.tab.path, name: name.trim() });
       onRefresh(ids.tab.path);
     } catch (err: any) {
-      alert(`Failed to create folder: ${err}`);
+      onError(`Failed to create folder: ${err}`);
     }
   }
 
-  export async function doNewFile() {
+  export async function doNewFile(name: string) {
+    if (!name.trim()) return;
     const ids = getLiveTab();
     if (!ids) return;
-    const name = prompt("New file name:");
-    if (!name?.trim()) return;
     try {
       await invoke("create_file", { path: ids.tab.path, name: name.trim() });
       onRefresh(ids.tab.path);
     } catch (err: any) {
-      alert(`Failed to create file: ${err}`);
+      onError(`Failed to create file: ${err}`);
     }
   }
 
@@ -227,8 +225,8 @@
     items.push({ label: "Delete Permanently", shortcut: "Shift+Del", action: () => doDelete(true), danger: true });
 
     items.push({ divider: true });
-    items.push({ label: "New Folder", shortcut: "Ctrl+Shift+N", action: () => doNewFolder() });
-    items.push({ label: "New File", shortcut: "Ctrl+Alt+N", action: () => doNewFile() });
+    items.push({ label: "New Folder", shortcut: "Ctrl+Shift+N", action: () => {} });
+    items.push({ label: "New File", shortcut: "Ctrl+Alt+N", action: () => {} });
 
     return items;
   }

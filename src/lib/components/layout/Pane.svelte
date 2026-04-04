@@ -13,7 +13,7 @@
   import TextInput from "../common/TextInput.svelte";
   import EmptyState from "../common/EmptyState.svelte";
   import PaneFileOps from "./PaneFileOps.svelte";
-  import ActionToolbar from "./ActionToolbar.svelte";
+  import ActionToolbar, { type ShellNewItem } from "./ActionToolbar.svelte";
   import HomeView from "../home/HomeView.svelte";
   import { HOME_PATH } from "../../stores/home";
   import { settings } from "../../stores/settings";
@@ -88,7 +88,23 @@
   let contextMenu: { x: number; y: number; path: string; entry: FileEntry } | null = $state(null);
   let renamingPath: string | null = $state(null);
   let renameValue: string = $state("");
+  let showNewFolderDialog = $state(false);
+  let newFolderName = $state("");
+  let showNewFileDialog = $state(false);
+  let newFileName = $state("");
+  let shellNewItems = $state<ShellNewItem[]>([]);
+  let showNewShellItemDialog = $state(false);
+  let newShellItemExt = $state("");
+  let newShellItemName = $state("");
   let showMovePicker = $state(false);
+
+  // Load shell new items once on first mount
+  $effect(() => {
+    invoke<ShellNewItem[]>("get_shell_new_items").then((items) => {
+      shellNewItems = items;
+    }).catch(() => {});
+    return () => {};
+  });
 
   function handleFileOpsError(msg: string) {
     const ids = getLiveTab();
@@ -202,6 +218,11 @@
     if (renameItem && paths.length === 1) {
       renameItem.action = () => startRename(paths[0]);
     }
+    // Wire new folder/file actions into local dialog state
+    const newFolderItem = items.find((it) => it.label === "New Folder");
+    if (newFolderItem) newFolderItem.action = () => { newFolderName = "New Folder"; showNewFolderDialog = true; };
+    const newFileItem = items.find((it) => it.label === "New File");
+    if (newFileItem) newFileItem.action = () => { newFileName = ""; showNewFileDialog = true; };
     return items;
   }
 
@@ -504,8 +525,8 @@
   export function renameSelected() {
     if (selectedPaths.size === 1) startRename([...selectedPaths][0]);
   }
-  export function newFolder() { fileOps?.doNewFolder(); }
-  export function newFile() { fileOps?.doNewFile(); }
+  export function newFolder() { newFolderName = "New Folder"; showNewFolderDialog = true; }
+  export function newFile() { newFileName = ""; showNewFileDialog = true; }
   export function selectAll() {
     if (!tabData) return;
     const cp = tabData.path;
@@ -572,8 +593,13 @@
     <ActionToolbar
       selectedCount={selectedPaths.size}
       canPaste={$clipboard !== null}
-      onNewFile={() => fileOps?.doNewFile()}
-      onNewFolder={() => fileOps?.doNewFolder()}
+      {shellNewItems}
+      onNewFolder={() => { newFolderName = "New Folder"; showNewFolderDialog = true; }}
+      onNewShellItem={(ext, displayName) => {
+        newShellItemExt = ext;
+        newShellItemName = `New ${displayName}${ext}`;
+        showNewShellItemDialog = true;
+      }}
       onCopy={() => fileOps?.doCopy()}
       onCut={() => fileOps?.doCut()}
       onPaste={() => fileOps?.doPaste()}
@@ -651,6 +677,83 @@
         {#snippet actions()}
           <Button variant="primary" size="md" onclick={commitRename}>Rename</Button>
           <Button size="md" onclick={cancelRename}>Cancel</Button>
+        {/snippet}
+      </Dialog>
+    {/if}
+    {#if showNewFolderDialog}
+      <Dialog title="New Folder" onClose={() => showNewFolderDialog = false}>
+        {#snippet children()}
+          <TextInput
+            bind:value={newFolderName}
+            autofocus
+            onkeydown={(e) => {
+              if (e.key === "Enter") { showNewFolderDialog = false; fileOps?.doNewFolder(newFolderName); }
+              if (e.key === "Escape") showNewFolderDialog = false;
+            }}
+          />
+        {/snippet}
+        {#snippet actions()}
+          <Button variant="primary" size="md" onclick={() => { showNewFolderDialog = false; fileOps?.doNewFolder(newFolderName); }}>Create</Button>
+          <Button size="md" onclick={() => showNewFolderDialog = false}>Cancel</Button>
+        {/snippet}
+      </Dialog>
+    {/if}
+    {#if showNewFileDialog}
+      <Dialog title="New File" onClose={() => showNewFileDialog = false}>
+        {#snippet children()}
+          <TextInput
+            bind:value={newFileName}
+            autofocus
+            placeholder="filename.txt"
+            onkeydown={(e) => {
+              if (e.key === "Enter") { showNewFileDialog = false; fileOps?.doNewFile(newFileName); }
+              if (e.key === "Escape") showNewFileDialog = false;
+            }}
+          />
+        {/snippet}
+        {#snippet actions()}
+          <Button variant="primary" size="md" onclick={() => { showNewFileDialog = false; fileOps?.doNewFile(newFileName); }}>Create</Button>
+          <Button size="md" onclick={() => showNewFileDialog = false}>Cancel</Button>
+        {/snippet}
+      </Dialog>
+    {/if}
+    {#if showNewShellItemDialog}
+      <Dialog title="New {newShellItemExt ? newShellItemExt.slice(1).toUpperCase() + ' File' : 'Item'}" onClose={() => showNewShellItemDialog = false}>
+        {#snippet children()}
+          <TextInput
+            bind:value={newShellItemName}
+            autofocus
+            onkeydown={async (e) => {
+              if (e.key === "Enter") {
+                showNewShellItemDialog = false;
+                const ids = getLiveTab();
+                if (ids) {
+                  try {
+                    const created: string = await invoke("create_shell_new_item", { parentPath: ids.tab.path, name: newShellItemName, ext: newShellItemExt });
+                    refresh();
+                    await invoke("open_file", { path: created });
+                  }
+                  catch (err: any) { handleFileOpsError(`Failed to create: ${err}`); }
+                }
+              }
+              if (e.key === "Escape") showNewShellItemDialog = false;
+            }}
+          />
+        {/snippet}
+        {#snippet actions()}
+          <Button variant="primary" size="md" onclick={async () => {
+            showNewShellItemDialog = false;
+            const ids = getLiveTab();
+            if (ids) {
+              try {
+                    const created: string = await invoke("create_shell_new_item", { parentPath: ids.tab.path, name: newShellItemName, ext: newShellItemExt });
+                    refresh();
+                    await invoke("open_file", { path: created });
+                  }
+              catch (err: any) { handleFileOpsError(`Failed to create: ${err}`); }
+            }
+          }}>Create</Button>
+          <Button size="md" onclick={() => showNewShellItemDialog = false}>Cancel</Button>
         {/snippet}
       </Dialog>
     {/if}

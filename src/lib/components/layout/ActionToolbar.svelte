@@ -1,9 +1,15 @@
 <script lang="ts">
+  export interface ShellNewItem {
+    ext: string;
+    display_name: string;
+  }
+
   interface Props {
     selectedCount?: number;
     canPaste?: boolean;
-    onNewFile?: () => void;
+    shellNewItems?: ShellNewItem[];
     onNewFolder?: () => void;
+    onNewShellItem?: (ext: string, displayName: string) => void;
     onCopy?: () => void;
     onCut?: () => void;
     onPaste?: () => void;
@@ -18,8 +24,9 @@
   let {
     selectedCount = 0,
     canPaste = false,
-    onNewFile,
+    shellNewItems = [],
     onNewFolder,
+    onNewShellItem,
     onCopy,
     onCut,
     onPaste,
@@ -32,16 +39,59 @@
   }: Props = $props();
 
   let showNewMenu = $state(false);
+  let menuTop = $state(0);
+  let menuLeft = $state(0);
+  let newBtnEl: HTMLButtonElement | null = $state(null);
   let hasSelection = $derived(selectedCount > 0);
 
-  function handleNewFile() {
-    showNewMenu = false;
-    onNewFile?.();
+  function openNewMenu() {
+    if (newBtnEl) {
+      const r = newBtnEl.getBoundingClientRect();
+      menuTop = r.bottom + 3;
+      menuLeft = r.left;
+    }
+    showNewMenu = !showNewMenu;
   }
 
-  function handleNewFolder() {
+  function pick(ext: string, displayName: string) {
     showNewMenu = false;
-    onNewFolder?.();
+    if (ext === "") {
+      onNewFolder?.();
+    } else {
+      onNewShellItem?.(ext, displayName);
+    }
+  }
+
+  // Returns an inline SVG path set appropriate for the file extension
+  function iconForExt(ext: string): string {
+    const e = ext.toLowerCase();
+    if ([".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".svg", ".ico", ".tiff", ".heic"].includes(e)) {
+      return `<rect x="2" y="3" width="12" height="10" rx="1"/>
+              <path d="M2 10l3-3 2.5 2.5L10 7l4 4"/>
+              <circle cx="5.5" cy="6.5" r="1"/>`;
+    }
+    if ([".zip", ".rar", ".7z", ".tar", ".gz", ".bz2"].includes(e)) {
+      return `<path d="M9 2H4a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V6z"/>
+              <polyline points="9,2 9,6 13,6"/>
+              <line x1="7.5" y1="8" x2="8.5" y2="8"/>
+              <line x1="7.5" y1="10" x2="8.5" y2="10"/>
+              <line x1="7.5" y1="12" x2="8.5" y2="12"/>`;
+    }
+    if ([".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a", ".wma"].includes(e)) {
+      return `<path d="M9 2H4a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V6z"/>
+              <polyline points="9,2 9,6 13,6"/>
+              <path d="M7 11a1 1 0 102 0V8l2-1"/>`;
+    }
+    if ([".mp4", ".avi", ".mov", ".mkv", ".wmv", ".flv", ".webm"].includes(e)) {
+      return `<path d="M9 2H4a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V6z"/>
+              <polyline points="9,2 9,6 13,6"/>
+              <polygon points="6,8 6,12 11,10"/>`;
+    }
+    // Generic file with + icon (blank file to be created)
+    return `<path d="M9 2H4a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V6z"/>
+            <polyline points="9,2 9,6 13,6"/>
+            <line x1="8" y1="9" x2="8" y2="12"/>
+            <line x1="6.5" y1="10.5" x2="9.5" y2="10.5"/>`;
   }
 </script>
 
@@ -49,6 +99,26 @@
   <!-- svelte-ignore a11y_click_events_have_key_events -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div class="backdrop" onclick={() => (showNewMenu = false)}></div>
+  <!-- Menu is fixed-positioned to escape any overflow:hidden ancestor -->
+  <div class="new-menu" style="top: {menuTop}px; left: {menuLeft}px;">
+    <button class="menu-item" onclick={() => pick("", "Folder")}>
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 5a1 1 0 011-1h3l1.5 2H13a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1V5z"/>
+      </svg>
+      Folder
+    </button>
+    {#if shellNewItems.length > 0}
+      <div class="menu-sep"></div>
+      {#each shellNewItems as item (item.ext)}
+        <button class="menu-item" onclick={() => pick(item.ext, item.display_name)}>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            {@html iconForExt(item.ext)}
+          </svg>
+          {item.display_name}
+        </button>
+      {/each}
+    {/if}
+  </div>
 {/if}
 
 <div class="action-toolbar">
@@ -63,12 +133,13 @@
 
   <div class="sep"></div>
 
-  <!-- New (folder / file dropdown) -->
+  <!-- New dropdown -->
   <div class="new-wrap">
     <button
+      bind:this={newBtnEl}
       class="tb-btn btn new-btn"
       title="New"
-      onclick={() => (showNewMenu = !showNewMenu)}
+      onclick={openNewMenu}
     >
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
         <line x1="8" y1="3" x2="8" y2="13"/>
@@ -79,27 +150,6 @@
         <polyline points="1,2.5 4,5.5 7,2.5"/>
       </svg>
     </button>
-    {#if showNewMenu}
-      <div class="new-menu">
-        <button class="menu-item" onclick={handleNewFolder}>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M2 5a1 1 0 011-1h3l1.5 2H13a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1V5z"/>
-            <line x1="8" y1="8" x2="8" y2="11"/>
-            <line x1="6.5" y1="9.5" x2="9.5" y2="9.5"/>
-          </svg>
-          New Folder
-        </button>
-        <button class="menu-item" onclick={handleNewFile}>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 2H4a1 1 0 00-1 1v10a1 1 0 001 1h8a1 1 0 001-1V6z"/>
-            <polyline points="9,2 9,6 13,6"/>
-            <line x1="8" y1="9" x2="8" y2="12"/>
-            <line x1="6.5" y1="10.5" x2="9.5" y2="10.5"/>
-          </svg>
-          New File
-        </button>
-      </div>
-    {/if}
   </div>
 
   <div class="sep"></div>
@@ -276,11 +326,6 @@
     margin: 0 3px;
   }
 
-  /* New dropdown wrapper */
-  .new-wrap {
-    position: relative;
-  }
-
   .new-btn {
     gap: 3px;
   }
@@ -291,11 +336,9 @@
     opacity: 0.6;
   }
 
-  /* New dropdown menu */
+  /* New dropdown menu — fixed so it escapes any overflow:hidden ancestor */
   .new-menu {
-    position: absolute;
-    top: calc(100% + 3px);
-    left: 0;
+    position: fixed;
     z-index: var(--z-dropdown);
     background: var(--surface-float);
     border: 1px solid var(--border-active);
@@ -304,7 +347,10 @@
     -webkit-backdrop-filter: var(--blur-md) saturate(120%);
     box-shadow: var(--shadow-md);
     padding: 3px;
-    min-width: 140px;
+    min-width: 180px;
+    max-height: 360px;
+    overflow-y: auto;
+    scrollbar-width: thin;
     display: flex;
     flex-direction: column;
     gap: 1px;
@@ -332,6 +378,13 @@
   .menu-item svg {
     width: 14px;
     height: 14px;
+    flex-shrink: 0;
+  }
+
+  .menu-sep {
+    height: 1px;
+    background: var(--border);
+    margin: 3px 0;
     flex-shrink: 0;
   }
 
