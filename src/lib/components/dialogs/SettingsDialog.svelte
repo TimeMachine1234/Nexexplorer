@@ -268,6 +268,23 @@
               <span class="toggle-thumb"></span>
             </button>
           </div>
+
+          <!-- Transfer Notifications -->
+          <div class="s-row">
+            <div class="s-label-group">
+              <span class="s-label">Transfer Notifications</span>
+              <span class="s-desc">Show a Windows toast when a copy or move finishes</span>
+            </div>
+            <button
+              class="toggle"
+              class:toggle--on={$settings.transferNotifications}
+              onclick={() => settings.update(s => ({ ...s, transferNotifications: !s.transferNotifications }))}
+              role="switch"
+              aria-checked={$settings.transferNotifications}
+            >
+              <span class="toggle-thumb"></span>
+            </button>
+          </div>
         </section>
 
         <!-- ── FILES ──────────────────────────────────── -->

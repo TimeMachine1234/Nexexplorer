@@ -501,6 +501,79 @@ pub fn clear_thumbnail_cache(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Run Windows built-in OCR on an image file and return all recognised text.
+/// Uses Windows.Media.Ocr (available on Windows 10 1607+). Drives the WinRT
+/// async operations with `.get()` on a dedicated thread (avoids blocking the
+/// Tauri command thread which may not have a COM apartment initialised).
+#[tauri::command]
+pub fn ocr_image(path: String) -> Result<String, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use windows::Graphics::Imaging::{BitmapAlphaMode, BitmapDecoder, BitmapPixelFormat};
+        use windows::Media::Ocr::OcrEngine;
+        use windows::Storage::Streams::{DataWriter, InMemoryRandomAccessStream};
+
+        let data = std::fs::read(&path).map_err(|e| format!("Cannot read file: {e}"))?;
+
+        let result = std::thread::spawn(move || -> Result<String, String> {
+            // Write image bytes into a WinRT in-memory stream
+            let stream = InMemoryRandomAccessStream::new()
+                .map_err(|e| format!("Stream: {e}"))?;
+            let writer = DataWriter::CreateDataWriter(&stream)
+                .map_err(|e| format!("DataWriter: {e}"))?;
+            writer.WriteBytes(&data).map_err(|e| format!("WriteBytes: {e}"))?;
+            writer.StoreAsync()
+                .map_err(|e| format!("StoreAsync: {e}"))?
+                .get()
+                .map_err(|e| format!("Store.get: {e}"))?;
+            writer.FlushAsync()
+                .map_err(|e| format!("FlushAsync: {e}"))?
+                .get()
+                .map_err(|e| format!("Flush.get: {e}"))?;
+            writer.DetachStream().map_err(|e| format!("DetachStream: {e}"))?;
+
+            // Seek back to start before decoding
+            stream.Seek(0).map_err(|e| format!("Seek: {e}"))?;
+
+            // Auto-detect format and decode to a SoftwareBitmap (Bgra8 + premultiplied)
+            let decoder = BitmapDecoder::CreateAsync(&stream)
+                .map_err(|e| format!("CreateAsync: {e}"))?
+                .get()
+                .map_err(|e| format!("Decoder.get: {e}"))?;
+
+            let bitmap = decoder
+                .GetSoftwareBitmapConvertedAsync(
+                    BitmapPixelFormat::Bgra8,
+                    BitmapAlphaMode::Premultiplied,
+                )
+                .map_err(|e| format!("GetSoftwareBitmapConvertedAsync: {e}"))?
+                .get()
+                .map_err(|e| format!("Bitmap.get: {e}"))?;
+
+            // Create OCR engine for the user's profile language(s)
+            let engine = OcrEngine::TryCreateFromUserProfileLanguages()
+                .map_err(|e| format!("OcrEngine: {e}"))?;
+
+            let ocr_result = engine
+                .RecognizeAsync(&bitmap)
+                .map_err(|e| format!("RecognizeAsync: {e}"))?
+                .get()
+                .map_err(|e| format!("Recognize.get: {e}"))?;
+
+            Ok(ocr_result.Text().map_err(|e| format!("Text: {e}"))?.to_string())
+        })
+        .join()
+        .map_err(|_| "OCR thread panicked".to_string())??;
+
+        Ok(result)
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = path;
+        Err("OCR is only supported on Windows".to_string())
+    }
+}
+
 /// Evicts oldest thumbnails when cache exceeds 200MB. Call on startup.
 #[tauri::command]
 pub fn cleanup_thumbnail_cache(app: tauri::AppHandle) -> Result<u64, String> {

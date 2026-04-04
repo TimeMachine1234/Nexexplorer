@@ -26,8 +26,62 @@ pub fn run() {
             .ok();
     }
 
+    // Set AUMID so Windows toast notifications show "NexExplorer" instead of the parent process name.
+    // Also register it in the registry with a DisplayName — without that entry Windows falls back
+    // to showing the process name (e.g. "PowerShell") in the notification toast.
+    #[cfg(target_os = "windows")]
+    {
+        use windows_sys::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
+        use windows_sys::Win32::System::Registry::{
+            RegCreateKeyExW, RegSetValueExW, RegCloseKey,
+            HKEY_CURRENT_USER, REG_SZ, KEY_WRITE, REG_OPTION_NON_VOLATILE,
+        };
+
+        unsafe {
+            let id: Vec<u16> = "com.nexexplorer.app\0".encode_utf16().collect();
+            SetCurrentProcessExplicitAppUserModelID(id.as_ptr());
+
+            // Register AUMID → DisplayName in HKCU so toasts resolve the app name
+            let key_path: Vec<u16> =
+                "Software\\Classes\\AppUserModelId\\com.nexexplorer.app\0"
+                    .encode_utf16()
+                    .collect();
+            let value_name: Vec<u16> = "DisplayName\0".encode_utf16().collect();
+            let display_name: Vec<u16> = "NexExplorer\0".encode_utf16().collect();
+
+            let mut hkey: isize = 0;
+            let mut disposition: u32 = 0;
+            if RegCreateKeyExW(
+                HKEY_CURRENT_USER,
+                key_path.as_ptr(),
+                0,
+                std::ptr::null(),
+                REG_OPTION_NON_VOLATILE,
+                KEY_WRITE,
+                std::ptr::null(),
+                &mut hkey,
+                &mut disposition,
+            ) == 0 {
+                let bytes = std::slice::from_raw_parts(
+                    display_name.as_ptr() as *const u8,
+                    display_name.len() * 2,
+                );
+                RegSetValueExW(
+                    hkey,
+                    value_name.as_ptr(),
+                    0,
+                    REG_SZ,
+                    bytes.as_ptr(),
+                    bytes.len() as u32,
+                );
+                RegCloseKey(hkey);
+            }
+        }
+    }
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             // Init transfer engine: load calibration cache, compute RAM budget
             if let Ok(data_dir) = app.path().app_data_dir() {
@@ -79,6 +133,7 @@ pub fn run() {
             commands::preview::get_thumbnail_cache_size,
             commands::preview::clear_thumbnail_cache,
             commands::preview::cleanup_thumbnail_cache,
+            commands::preview::ocr_image,
             commands::search::start_indexing,
             commands::search::get_default_index_paths,
             commands::search::stop_indexing,

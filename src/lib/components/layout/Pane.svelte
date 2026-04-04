@@ -78,6 +78,13 @@
   // ── Selection & context menu state ──
   let selectedPaths: Set<string> = $state(new Set());
   let anchorPath: string | null = $state(null);
+
+  // Derive the FileEntry objects for the current selection (for StatusBar)
+  let selectedEntries = $derived.by(() => {
+    if (!tabData || selectedPaths.size === 0) return [];
+    const dirPath = tabData.path.endsWith("\\") ? tabData.path : tabData.path + "\\";
+    return tabData.entries.filter((e) => selectedPaths.has(dirPath + e.name));
+  });
   let contextMenu: { x: number; y: number; path: string; entry: FileEntry } | null = $state(null);
   let renamingPath: string | null = $state(null);
   let renameValue: string = $state("");
@@ -669,6 +676,9 @@
     <div class="bottom-bar">
       <StatusBar
         itemCount={$settings.viewMode === "grid" ? (gridViewRef?.getFilteredCount() ?? tabData.entries.length) : (fileListRef?.getFilteredCount() ?? tabData.entries.length)}
+        {selectedPaths}
+        {selectedEntries}
+        currentPath={tabData.path}
       />
       <FolderFilterBar
         bind:this={folderFilterBar}

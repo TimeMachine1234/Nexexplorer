@@ -24,7 +24,8 @@
   } from "./lib/stores/panes";
 
   let currentPath = $derived(getActiveTab(getActivePane($layout)).path);
-  import { setupTransferListener, transfers } from "./lib/stores/transfers";
+  import { setupTransferListener, transfers, inAppToasts } from "./lib/stores/transfers";
+  import Toast from "$lib/components/common/Toast.svelte";
   import { selectedFileForPreview, debouncedPreviewPath } from "./lib/stores/preview";
   import { invoke } from "@tauri-apps/api/core";
   import { settings } from "./lib/stores/settings";
@@ -397,6 +398,19 @@
 <ConflictBatch />
 <DragGhost />
 
+{#if $inAppToasts.length > 0}
+  <div class="toast-container">
+    {#each $inAppToasts as toast (toast.id)}
+      <Toast
+        message="{toast.title} — {toast.body}"
+        type="success"
+        duration={4000}
+        onclose={() => inAppToasts.update((l) => l.filter((t) => t.id !== toast.id))}
+      />
+    {/each}
+  </div>
+{/if}
+
 <style>
   .app-layout {
     display: flex;
@@ -417,5 +431,16 @@
     flex: 1;
     display: flex;
     min-height: 0;
+  }
+
+  .toast-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 9999;
+    pointer-events: none;
   }
 </style>

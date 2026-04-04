@@ -686,6 +686,12 @@ fn prescan_conflicts(sources: &[String], dest: &Path) -> Vec<ConflictInfo> {
         if let Some(name) = src.file_name() {
             let dst = dest.join(name);
             if dst.exists() {
+                // Skip if source and destination are the same file (e.g. moving a file
+                // back to the folder it already lives in — not a real conflict).
+                let same = src.canonicalize().ok().zip(dst.canonicalize().ok())
+                    .map(|(a, b)| a == b)
+                    .unwrap_or(false);
+                if same { continue; }
                 let sm = src.metadata().ok();
                 let dm = dst.metadata().ok();
                 conflicts.push(ConflictInfo {

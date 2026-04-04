@@ -17,9 +17,14 @@ format_datetime() helper for human-readable timestamps
 Called from run_orchestrator after emitter joins
 4. Windows Toast Notifications
 run_emitter emits transfer-done Tauri event on Completed/Failed/Cancelled
-Frontend showToast() using Web Notifications API — no plugin needed
-Auto-requests permission; skips notification for Cancelled
+Frontend showToast() uses tauri-plugin-notification (sendNotification) — no browser permission needed
+Skips notification for Cancelled transfers
 _unlistenDone listener wired into setupTransferListener / teardownTransferListener
+Fixed: switched from Web Notifications API (broken in WebView2 — always denied) to tauri-plugin-notification
+  - tauri-plugin-notification = "2" added to Cargo.toml
+  - @tauri-apps/plugin-notification installed via npm
+  - Plugin registered in lib.rs
+  - notification:default + notification:allow-notify added to capabilities/default.json
 5. "New Folder With Items"
 new_folder_with_items Tauri command in operations.rs — creates folder (auto-numbers if name taken), fires Move transfer for items
 Registered in lib.rs
@@ -47,9 +52,11 @@ operations.rs — 5 new Tauri commands: set_rate_limit, get_rate_limit, new_fold
 
 lib.rs — registered: set_rate_limit, get_rate_limit, new_folder_with_items, mirror_folder_structure
 
-Cargo.toml — added crc32fast = "1"
+Cargo.toml — added crc32fast = "1", tauri-plugin-notification = "2"
 
-transfers.ts — new exports: startTransferMulti, newFolderWithItems, setRateLimit, getRateLimit, mirrorFolderStructure; extended TransferProgress type; wired _unlistenDone
+transfers.ts — new exports: startTransferMulti, newFolderWithItems, setRateLimit, getRateLimit, mirrorFolderStructure; extended TransferProgress type; wired _unlistenDone; showToast() replaced with sendNotification from @tauri-apps/plugin-notification
+
+capabilities/default.json — added notification:default, notification:allow-notify
 
 docs/transfer-engine.md — new dedicated doc: architecture, copy tiers, drive calibration, long paths, CRC32 flow, conflict resolution, full API reference
 
@@ -57,4 +64,21 @@ CLAUDE.md — updated with new dependencies + pointer to docs/transfer-engine.md
 
 That's 10 TeraCopy features plus supporting infrastructure. Multi-select (already done in Pane.svelte) and SmallFileBuffer/BigFileBuffer (already covered by the 3-tier adaptive copy) were confirmed as already implemented, so they didn't need new work.
 
-Feedback submitted
+Bug Fixes
+BUG FIX: Toast notification firing 3x per transfer
+  - Root cause: teardownTransferListener resets listenerSetup = false, causing duplicate listeners to accumulate across pane re-mounts
+  - Fix: Added _toastedIds Set in transfers.ts — showToast() deduplicates by transfer ID, ignoring subsequent calls for the same transfer
+  - Cleanup: IDs auto-removed from set after 60s to prevent unbounded growth
+
+BUG FIX: False "file already exists" conflict when moving file back to its original folder
+  - Root cause: prescan_conflicts() in transfer_engine.rs only checked dst.exists() without verifying src and dst aren't the same file
+  - Fix: canonicalize() both paths and skip the conflict when they resolve to the same location
+
+11. Status Bar File Info + Thumbnail
+StatusBar.svelte — fully rewritten to show context-aware info:
+  - No selection: "N items" count (unchanged)
+  - Single file: name (bold) · size · type · modified date
+  - Single image: 16×16 thumbnail + name · size · type · modified date
+  - Multi-selection: "N items selected — X MB" (folders excluded from size)
+Thumbnail uses existing getCachedThumb / requestThumbnails pipeline (48px, async, cached)
+Pane.svelte — added selectedEntries derived value; wired selectedPaths, selectedEntries, currentPath props to StatusBar

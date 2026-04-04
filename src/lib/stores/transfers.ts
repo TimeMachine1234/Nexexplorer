@@ -1,6 +1,9 @@
 import { writable, get } from "svelte/store";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { sendNotification } from "@tauri-apps/plugin-notification";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { settings } from "./settings";
 
 export type TransferOp = "Copy" | "Move";
 export type TransferStatus = "Queued" | "Running" | "Paused" | "Completed" | "Failed" | "Cancelled";
@@ -50,6 +53,13 @@ export interface PendingConflicts {
 export const transfers = writable<TransferProgress[]>([]);
 export const pendingConflicts = writable<PendingConflicts[]>([]);
 
+export interface InAppToast {
+  id: string;
+  title: string;
+  body: string;
+}
+export const inAppToasts = writable<InAppToast[]>([]);
+
 // Clipboard for copy/cut operations
 export interface ClipboardState {
   op: "copy" | "cut";
@@ -92,15 +102,22 @@ let _unlistenProgress: Promise<() => void> | null = null;
 let _unlistenConflicts: Promise<() => void> | null = null;
 let _unlistenDone: Promise<() => void> | null = null;
 const _autoCleanupTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const _toastedIds = new Set<string>();
 
-function showToast(title: string, body: string) {
-  if (!("Notification" in window)) return;
-  const fire = () => new Notification(title, { body, icon: "/app-icon.png" });
-  if (Notification.permission === "granted") {
-    fire();
-  } else if (Notification.permission !== "denied") {
-    Notification.requestPermission().then((p) => { if (p === "granted") fire(); });
-  }
+async function showToast(id: string, title: string, body: string) {
+  if (_toastedIds.has(id)) return;
+  _toastedIds.add(id);
+  // Clean up after 60s so the set doesn't grow unboundedly
+  setTimeout(() => _toastedIds.delete(id), 60_000);
+  if (!get(settings).transferNotifications) return;
+  try {
+    const focused = await getCurrentWebviewWindow().isFocused();
+    if (focused) {
+      inAppToasts.update((list) => [...list, { id, title, body }]);
+    } else {
+      sendNotification({ title, body });
+    }
+  } catch { /* non-fatal */ }
 }
 
 export function setupTransferListener() {
@@ -110,8 +127,8 @@ export function setupTransferListener() {
   _unlistenDone = listen<{ id: string; status: string; title: string; body: string }>(
     "transfer-done",
     (event) => {
-      const { title, body, status } = event.payload;
-      if (status !== "Cancelled") showToast(title, body);
+      const { id, title, body, status } = event.payload;
+      if (status !== "Cancelled") showToast(id, title, body);
     }
   );
 

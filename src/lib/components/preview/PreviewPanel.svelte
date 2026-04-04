@@ -245,6 +245,32 @@
     return { destroy() { node.pause(); node.removeAttribute("src"); node.load(); } };
   }
 
+  // --- OCR state ---
+  let ocrRunning = $state(false);
+  let ocrText = $state("");
+  let ocrCopied = $state(false);
+  let ocrError = $state("");
+
+  function resetOcrState() { ocrRunning = false; ocrText = ""; ocrCopied = false; ocrError = ""; }
+
+  async function runOcr() {
+    if (!filePath || ocrRunning) return;
+    ocrRunning = true; ocrText = ""; ocrCopied = false; ocrError = "";
+    try {
+      const text: string = await invoke("ocr_image", { path: filePath });
+      ocrText = text.trim();
+      if (ocrText) {
+        await navigator.clipboard.writeText(ocrText);
+        ocrCopied = true;
+        setTimeout(() => ocrCopied = false, 2000);
+      }
+    } catch (e: any) {
+      ocrError = e.toString();
+    } finally {
+      ocrRunning = false;
+    }
+  }
+
   // --- Text state ---
   let textWrap = $state(false);
   let showLineNumbers = $state(true);
@@ -285,7 +311,7 @@
       imageUrl = "";             // release previous decoded media immediately
       previewType = "none";      // drop stale media element before new load
       if (currentPath) {
-        resetImageState(); resetVideoState(); resetTextState();
+        resetImageState(); resetVideoState(); resetTextState(); resetOcrState();
         _loadDebounce = setTimeout(() => { loadPreview(currentPath); }, 50);
       } else {
         resetState();
@@ -430,6 +456,8 @@
       onToggleGrid={() => showGrid = !showGrid}
       onToggleLoupe={() => { loupeActive = !loupeActive; colorPickerActive = false; }}
       onToggleColorPicker={() => { colorPickerActive = !colorPickerActive; loupeActive = false; }}
+      {ocrRunning} {ocrText} {ocrCopied} {ocrError}
+      onRunOcr={runOcr}
       onStartEditZoom={() => { zoomInputValue = String(imgZoomPercent); editingZoom = true; }}
       onCommitZoomInput={commitZoomInput}
       onCancelEditZoom={() => editingZoom = false}

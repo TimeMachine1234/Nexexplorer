@@ -40,6 +40,12 @@
     onToggleLineNumbers: () => void;
     onToggleTextWrap: () => void;
     onCopyTextContent: () => void;
+    // OCR props (image only)
+    ocrRunning: boolean;
+    ocrText: string;
+    ocrCopied: boolean;
+    ocrError: string;
+    onRunOcr: () => void;
     // PDF toolbar props
     onOpenWithSystem: () => void;
   }
@@ -54,6 +60,7 @@
     onVideoStepFrame, onToggleVideoPlay, onCycleSpeed, onToggleVideoMute, formatTime,
     showLineNumbers, textWrap, textCopied, textContent,
     onToggleLineNumbers, onToggleTextWrap, onCopyTextContent,
+    ocrRunning, ocrText, ocrCopied, ocrError, onRunOcr,
     onOpenWithSystem,
   }: Props = $props();
 </script>
@@ -104,6 +111,21 @@
     {#if pickedColor}
       <div class="color-swatch" style="background: {pickedColor}" title="{pickedColor} (copied)"></div>
       <span class="tb-label color-hex">{pickedColor}</span>
+    {/if}
+    <div class="tb-sep"></div>
+    <button class="tb-btn ocr-btn" class:ocr-copied={ocrCopied} class:ocr-error={!!ocrError} onclick={onRunOcr} title={ocrCopied ? "Copied!" : ocrError ? ocrError : "Extract text (OCR)"} disabled={ocrRunning}>
+      {#if ocrRunning}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" class="ocr-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      {:else if ocrCopied}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="1.4"><polyline points="20 6 9 17 4 12"/></svg>
+      {:else if ocrError}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--error, #f87171)" stroke-width="1.4"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      {:else}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="13" y2="16"/></svg>
+      {/if}
+    </button>
+    {#if ocrText && !ocrRunning}
+      <span class="tb-label ocr-label" title={ocrText}>{ocrText.length} chars copied</span>
     {/if}
   </div>
 
@@ -281,5 +303,32 @@
   .truncated-badge {
     color: var(--warning);
     font-weight: 600;
+  }
+
+  .ocr-btn:disabled {
+    opacity: 0.7;
+    cursor: wait;
+  }
+
+  .ocr-btn.ocr-copied {
+    color: var(--success);
+  }
+
+  .ocr-btn.ocr-error {
+    color: var(--error, #f87171);
+  }
+
+  .ocr-label {
+    color: var(--ai, #a78bfa);
+    font-variant-numeric: tabular-nums;
+  }
+
+  @keyframes ocr-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .ocr-spin {
+    animation: ocr-spin 0.8s linear infinite;
+    transform-origin: center;
   }
 </style>

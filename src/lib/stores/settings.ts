@@ -24,6 +24,7 @@ export interface AppSettings {
   actOnPress: boolean;
   showSelectionBoxes: boolean;
   scrollBeyondLastItem: boolean;
+  transferNotifications: boolean;
 }
 
 const STORAGE_KEY = "nexexplorer_settings";
@@ -48,6 +49,7 @@ const DEFAULTS: AppSettings = {
   actOnPress: true,
   showSelectionBoxes: true,
   scrollBeyondLastItem: true,
+  transferNotifications: true,
 };
 
 function loadSettings(): AppSettings {
