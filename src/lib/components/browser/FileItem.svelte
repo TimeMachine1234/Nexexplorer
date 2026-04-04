@@ -177,6 +177,7 @@
 
   .file-item:hover {
     background-color: var(--surface-high);
+    transition-duration: 0ms;
   }
 
   .file-item:focus {

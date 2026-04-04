@@ -320,6 +320,7 @@
   .tab:hover {
     background: var(--surface-high);
     color: var(--text-secondary);
+    transition-duration: 0ms;
   }
 
   .tab.drag-switch-pending {
