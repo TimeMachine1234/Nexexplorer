@@ -320,7 +320,7 @@
           <div class="s-row">
             <div class="s-label-group">
               <span class="s-label">Transfer Panel Mode</span>
-              <span class="s-desc">Simple: compact progress bar. Power: TeraCopy-style with file list, speed graph, and tabs</span>
+              <span class="s-desc">Simple: compact progress bar. Power: advanced with file list, speed graph, and tabs</span>
             </div>
             <div class="s-segmented">
               <button
@@ -380,6 +380,23 @@
               onclick={() => settings.update(s => ({ ...s, transferNotifications: !s.transferNotifications }))}
               role="switch"
               aria-checked={$settings.transferNotifications}
+            >
+              <span class="toggle-thumb"></span>
+            </button>
+          </div>
+
+          <!-- Auto-Hide Completed Transfers -->
+          <div class="s-row">
+            <div class="s-label-group">
+              <span class="s-label">Auto-Hide Completed Transfers</span>
+              <span class="s-desc">Automatically remove finished transfers from the panel after 30 seconds. Turn off to keep them visible until manually dismissed</span>
+            </div>
+            <button
+              class="toggle"
+              class:toggle--on={$settings.transferAutoHide}
+              onclick={() => settings.update(s => ({ ...s, transferAutoHide: !s.transferAutoHide }))}
+              role="switch"
+              aria-checked={$settings.transferAutoHide}
             >
               <span class="toggle-thumb"></span>
             </button>

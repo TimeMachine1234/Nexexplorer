@@ -28,6 +28,7 @@
   let fileHistory = $state<FileEntry[]>([]);
   let logLines = $state<string[]>([]);
   let prevFile = $state('');
+  let terminalResolved = $state(false);
 
   // Track files as they flow through current_file
   $effect(() => {
@@ -48,12 +49,15 @@
     prevFile = cur;
   });
 
-  // On terminal state, resolve any remaining active entries
+  // On terminal state, resolve any remaining active entries — runs exactly once
   $effect(() => {
+    if (terminalResolved) return;
     if (t.status !== 'Completed' && t.status !== 'Failed' && t.status !== 'Cancelled') return;
+    terminalResolved = true;
+    const failedFiles = t.failed_files; // snapshot to avoid re-tracking
     fileHistory = fileHistory.map(e => {
       if (e.status !== 'active') return e;
-      const failed = t.failed_files.some(f => f.startsWith(e.path) || e.path.startsWith(f.split(':')[0]?.trim() ?? ''));
+      const failed = failedFiles.some(f => f.startsWith(e.path) || e.path.startsWith(f.split(':')[0]?.trim() ?? ''));
       return { ...e, status: failed ? 'failed' : 'ok' };
     });
     logLines = [...logLines, `${ts()} ${t.status}`];
@@ -478,7 +482,9 @@
   }
 
   .tip-failed { border-left: 3px solid var(--danger); }
-  .tip-completed { opacity: 0.75; }
+  /* opacity < 1 creates a stacking context — use a subtle bg tint instead
+     so tabs and controls stay fully interactive */
+  .tip-completed { background: color-mix(in srgb, var(--surface) 94%, var(--success)); }
 
   /* ── Header ──────────────────────────────────────────────────── */
   .tip-header {
@@ -695,6 +701,9 @@
     border-top: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
     background: var(--surface);
+    flex-shrink: 0; /* never let the tab bar get squished */
+    position: relative;
+    z-index: 1; /* sit above any overflow from the rows above */
   }
 
   .tip-tab {

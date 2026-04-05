@@ -122,8 +122,11 @@
         min="0"
         max="500"
         step="5"
-        bind:value={rateLimitMbs}
-        oninput={onSliderChange}
+        value={rateLimitMbs}
+        oninput={(e) => {
+          rateLimitMbs = Number((e.currentTarget as HTMLInputElement).value);
+          onSliderChange();
+        }}
       />
       <span class="tq-rate-value">
         {rateLimitMbs === 0 ? "Unlimited" : `${rateLimitMbs} MB/s`}
@@ -227,6 +230,7 @@
 
   .tq-body {
     flex: 1;
+    min-height: 0; /* required for flex children to scroll instead of expanding */
     overflow-y: auto;
     padding: 4px;
   }

@@ -25,6 +25,7 @@ export interface AppSettings {
   showSelectionBoxes: boolean;
   scrollBeyondLastItem: boolean;
   transferNotifications: boolean;
+  transferAutoHide: boolean;
   transferUiMode: 'simple' | 'power';
   onFinishAction: 'nothing' | 'script';
   onFinishScript: string;
@@ -53,6 +54,7 @@ const DEFAULTS: AppSettings = {
   showSelectionBoxes: true,
   scrollBeyondLastItem: true,
   transferNotifications: true,
+  transferAutoHide: true,
   transferUiMode: 'simple',
   onFinishAction: 'nothing',
   onFinishScript: '',

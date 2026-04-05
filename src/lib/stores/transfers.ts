@@ -2,7 +2,6 @@ import { writable, get } from "svelte/store";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { sendNotification } from "@tauri-apps/plugin-notification";
-import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { settings } from "./settings";
 
 export type TransferOp = "Copy" | "Move";
@@ -110,20 +109,13 @@ let _unlistenDone: Promise<() => void> | null = null;
 const _autoCleanupTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const _toastedIds = new Set<string>();
 
-async function showToast(id: string, title: string, body: string) {
+function showToast(id: string, title: string, body: string) {
   if (_toastedIds.has(id)) return;
   _toastedIds.add(id);
   // Clean up after 60s so the set doesn't grow unboundedly
   setTimeout(() => _toastedIds.delete(id), 60_000);
   if (!get(settings).transferNotifications) return;
-  try {
-    const focused = await getCurrentWebviewWindow().isFocused();
-    if (focused) {
-      inAppToasts.update((list) => [...list, { id, title, body }]);
-    } else {
-      sendNotification({ title, body });
-    }
-  } catch { /* non-fatal */ }
+  try { sendNotification({ title, body }); } catch { /* non-fatal */ }
 }
 
 export function setupTransferListener() {
@@ -165,8 +157,8 @@ export function setupTransferListener() {
       return [...list, enriched];
     });
 
-    // Auto-remove terminal transfers after 30s to prevent unbounded array growth
-    if (isTerminal && !_autoCleanupTimers.has(p.id)) {
+    // Auto-remove terminal transfers after 30s (only if setting is enabled)
+    if (isTerminal && !_autoCleanupTimers.has(p.id) && get(settings).transferAutoHide) {
       const timer = setTimeout(() => {
         transfers.update((list) => list.filter((t) => t.id !== p.id));
         _autoCleanupTimers.delete(p.id);
