@@ -75,14 +75,20 @@ function startInterpolation() {
   if (rafId !== null) return;
   function tick() {
     const now = performance.now();
-    transfers.update((list) =>
-      list.map((t) => {
+    transfers.update((list) => {
+      let changed = false;
+      const next = list.map((t) => {
         if (t.status !== "Running" || t.speed_bps <= 0) return t;
         const elapsed = (now - (t._last_event_ts ?? now)) / 1000;
         const estimated = Math.min(t.bytes_done + t.speed_bps * elapsed, t.bytes_total);
+        // Only allocate a new object if the value moved meaningfully (>0.1% of total)
+        const threshold = Math.max(t.bytes_total * 0.001, 1024);
+        if (Math.abs(estimated - (t._interpolated_bytes ?? t.bytes_done)) < threshold) return t;
+        changed = true;
         return { ...t, _interpolated_bytes: estimated };
-      })
-    );
+      });
+      return changed ? next : list;
+    });
     rafId = requestAnimationFrame(tick);
   }
   rafId = requestAnimationFrame(tick);

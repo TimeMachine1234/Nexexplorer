@@ -43,8 +43,8 @@
     }
 
     const entry: FileEntry = { path: cur, name: fileName(cur), status: 'active' };
-    fileHistory = [...fileHistory, entry];
-    logLines = [...logLines, `${ts()} Copying: ${fileName(cur)}`];
+    fileHistory = [...fileHistory, entry].slice(-2000); // full history for counts/status
+    logLines = [...logLines, `${ts()} Copying: ${fileName(cur)}`].slice(-2000); // full audit trail
     prevFile = cur;
   });
 
@@ -60,6 +60,9 @@
   });
 
   // Derived display values
+  // reversedHistory: only the most recent 500 entries for rendering (avoids 2000-row DOM)
+  // fileHistory itself stays at 2000 so ok/failed counts and status resolution stay accurate
+  const reversedHistory = $derived(fileHistory.slice(-500).reverse());
   const displayBytes = $derived(t._interpolated_bytes ?? t.bytes_done);
   const pct = $derived(t.bytes_total > 0 ? Math.min(100, (displayBytes / t.bytes_total) * 100) : 0);
   const speedMbs = $derived(t.speed_bps / (1024 * 1024));
@@ -279,7 +282,7 @@
         <div class="tip-empty">No files yet</div>
       {:else}
         <div class="tip-file-list">
-          {#each [...fileHistory].reverse() as entry (entry.path)}
+          {#each reversedHistory as entry (entry.path)}
             <div class="tip-file-row tip-file-{entry.status}">
               <span class="tip-file-icon">
                 {#if entry.status === 'active'}

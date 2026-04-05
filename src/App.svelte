@@ -9,6 +9,7 @@
   import SettingsDialog from "./lib/components/dialogs/SettingsDialog.svelte";
   import DragGhost from "$lib/components/utils/DragGhost.svelte";
   import { get } from "svelte/store";
+  import { onMount, onDestroy } from "svelte";
   import { dragState, dragMove, dragSetTarget, dragEnd, dragCancel } from "$lib/stores/dragState";
   import { startTransfer } from "./lib/stores/transfers";
   import {
@@ -24,7 +25,7 @@
   } from "./lib/stores/panes";
 
   let currentPath = $derived(getActiveTab(getActivePane($layout)).path);
-  import { setupTransferListener, transfers, inAppToasts } from "./lib/stores/transfers";
+  import { setupTransferListener, teardownTransferListener, transfers, inAppToasts } from "./lib/stores/transfers";
   import Toast from "$lib/components/common/Toast.svelte";
   import { selectedFileForPreview, debouncedPreviewPath } from "./lib/stores/preview";
   import { invoke } from "@tauri-apps/api/core";
@@ -44,6 +45,11 @@
   // Setup transfer progress listener
   setupTransferListener();
 
+  // Tear down Tauri event listeners before webview reload (dev Ctrl+R) so
+  // orphaned listener slots don't accumulate in the Rust IPC bridge.
+  // In production this never fires — users can't reload the webview.
+  window.addEventListener('beforeunload', () => { teardownTransferListener(); });
+
   // Auto-start indexing + pane watcher on launch
   (async () => {
     try {
@@ -60,14 +66,22 @@
   })();
 
   // Handle Windows Explorer right-click integration events
-  // --copy paths arrive as a string[] to be staged for paste
-  // --navigate path navigates the active pane
-  listen<string[]>("explorer-copy", (event) => {
-    clipboard.set({ op: "copy", paths: event.payload });
-    showTransferPanel = true;
+  let _unlistenExplorerCopy: (() => void) | null = null;
+  let _unlistenExplorerNavigate: (() => void) | null = null;
+
+  onMount(async () => {
+    _unlistenExplorerCopy = await listen<string[]>("explorer-copy", (event) => {
+      clipboard.set({ op: "copy", paths: event.payload });
+      showTransferPanel = true;
+    });
+    _unlistenExplorerNavigate = await listen<string>("explorer-navigate", (event) => {
+      handleSidebarNavigate(event.payload);
+    });
   });
-  listen<string>("explorer-navigate", (event) => {
-    handleSidebarNavigate(event.payload);
+
+  onDestroy(() => {
+    _unlistenExplorerCopy?.();
+    _unlistenExplorerNavigate?.();
   });
 
   // Auto-show transfer panel when transfers start
@@ -407,7 +421,9 @@
   />
 {/if}
 
-<SettingsDialog bind:open={showSettings} />
+{#if showSettings}
+  <SettingsDialog open={showSettings} onclose={() => showSettings = false} />
+{/if}
 <ConflictBatch />
 <DragGhost />
 

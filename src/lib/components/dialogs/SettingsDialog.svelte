@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import Dialog from "../common/Dialog.svelte";
   import Button from "../common/Button.svelte";
@@ -10,8 +11,12 @@
   let explorerInstalled = $state(false);
   let explorerStatus = $state('');
 
-  // Check current integration state on mount
-  invoke<boolean>('is_explorer_integration_installed').then(v => { explorerInstalled = v; }).catch(() => {});
+  // Check current integration state on mount (not at module eval time)
+  onMount(() => {
+    invoke<boolean>('is_explorer_integration_installed')
+      .then(v => { explorerInstalled = v; })
+      .catch(() => {});
+  });
 
   async function toggleExplorerIntegration() {
     explorerStatus = '';
@@ -22,7 +27,7 @@
         explorerStatus = 'Removed from Explorer context menu.';
       } else {
         // Get the current executable path
-        const exePath: string = await invoke('get_exe_path').catch(() => '');
+        const exePath: string = await invoke<string>('get_exe_path').catch(() => '');
         await invoke('install_explorer_integration', { exePath });
         explorerInstalled = true;
         explorerStatus = 'Added to Explorer context menu. Right-click files to use it.';
