@@ -6,6 +6,7 @@
     pauseTransfer,
     resumeTransfer,
     cancelTransfer,
+    skipFile,
   } from "$lib/stores/transfers";
 
   interface Props {
@@ -197,6 +198,13 @@
           <rect x="9" y="3" width="3" height="10" rx="1" />
         </svg>
         Pause
+      </button>
+      <button class="ti-btn" onclick={() => skipFile(t.id)} title="Skip current file">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 4l6 4-6 4V4z" fill="currentColor" stroke="none"/>
+          <line x1="12" y1="4" x2="12" y2="12"/>
+        </svg>
+        Skip
       </button>
       <button class="ti-btn ti-btn-danger" onclick={() => cancelTransfer(t.id)} title="Cancel">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">

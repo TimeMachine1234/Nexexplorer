@@ -1,9 +1,51 @@
 <script lang="ts">
+  import { invoke } from "@tauri-apps/api/core";
   import Dialog from "../common/Dialog.svelte";
   import Button from "../common/Button.svelte";
   import { theme as themeStore, themeMode, themeCustomColor } from "../../stores/theme";
   import { settings } from "../../stores/settings";
   import { toggleHiddenFiles } from "../../stores/panes";
+
+  let exportStatus = $state('');
+  let explorerInstalled = $state(false);
+  let explorerStatus = $state('');
+
+  // Check current integration state on mount
+  invoke<boolean>('is_explorer_integration_installed').then(v => { explorerInstalled = v; }).catch(() => {});
+
+  async function toggleExplorerIntegration() {
+    explorerStatus = '';
+    try {
+      if (explorerInstalled) {
+        await invoke('uninstall_explorer_integration');
+        explorerInstalled = false;
+        explorerStatus = 'Removed from Explorer context menu.';
+      } else {
+        // Get the current executable path
+        const exePath: string = await invoke('get_exe_path').catch(() => '');
+        await invoke('install_explorer_integration', { exePath });
+        explorerInstalled = true;
+        explorerStatus = 'Added to Explorer context menu. Right-click files to use it.';
+      }
+    } catch (e: any) {
+      explorerStatus = `Error: ${e}`;
+    }
+  }
+
+  async function exportLog(format: 'html' | 'csv') {
+    exportStatus = 'Exporting…';
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const ext = format === 'html' ? 'html' : 'csv';
+      const { downloadDir } = await import('@tauri-apps/api/path');
+      const dlDir = await downloadDir();
+      const outPath = `${dlDir}\\NexExplorer_log_${today}.${ext}`;
+      await invoke('export_transfer_log', { date: today, format, outputPath: outPath });
+      exportStatus = `Saved: NexExplorer_log_${today}.${ext}`;
+    } catch (e: any) {
+      exportStatus = `Error: ${e}`;
+    }
+  }
 
   interface Props {
     open?: boolean;
@@ -269,6 +311,58 @@
             </button>
           </div>
 
+          <!-- Transfer UI Mode -->
+          <div class="s-row">
+            <div class="s-label-group">
+              <span class="s-label">Transfer Panel Mode</span>
+              <span class="s-desc">Simple: compact progress bar. Power: TeraCopy-style with file list, speed graph, and tabs</span>
+            </div>
+            <div class="s-segmented">
+              <button
+                class="s-seg-btn"
+                class:s-seg-active={$settings.transferUiMode === 'simple'}
+                onclick={() => settings.update(s => ({ ...s, transferUiMode: 'simple' }))}
+              >Simple</button>
+              <button
+                class="s-seg-btn"
+                class:s-seg-active={$settings.transferUiMode === 'power'}
+                onclick={() => settings.update(s => ({ ...s, transferUiMode: 'power' }))}
+              >Power</button>
+            </div>
+          </div>
+
+          <!-- On Finish Action -->
+          <div class="s-row">
+            <div class="s-label-group">
+              <span class="s-label">On Transfer Finish</span>
+              <span class="s-desc">Action to run automatically when all transfers complete</span>
+            </div>
+            <select
+              class="s-select"
+              value={$settings.onFinishAction}
+              onchange={(e) => settings.update(s => ({ ...s, onFinishAction: (e.target as HTMLSelectElement).value as any }))}
+            >
+              <option value="nothing">Do nothing</option>
+              <option value="script">Run script</option>
+            </select>
+          </div>
+
+          {#if $settings.onFinishAction === 'script'}
+            <div class="s-row">
+              <div class="s-label-group">
+                <span class="s-label">Script Path</span>
+                <span class="s-desc">.bat or .ps1 file launched after every transfer</span>
+              </div>
+              <input
+                class="s-text-input"
+                type="text"
+                placeholder="C:\scripts\on_finish.bat"
+                value={$settings.onFinishScript}
+                oninput={(e) => settings.update(s => ({ ...s, onFinishScript: (e.target as HTMLInputElement).value }))}
+              />
+            </div>
+          {/if}
+
           <!-- Transfer Notifications -->
           <div class="s-row">
             <div class="s-label-group">
@@ -285,6 +379,41 @@
               <span class="toggle-thumb"></span>
             </button>
           </div>
+
+          <!-- Export Transfer Log -->
+          <div class="s-row">
+            <div class="s-label-group">
+              <span class="s-label">Export Transfer Log</span>
+              <span class="s-desc">Export today's transfer history to your Downloads folder</span>
+            </div>
+            <div class="s-export-btns">
+              <button class="s-seg-btn s-seg-export" onclick={() => exportLog('html')}>HTML</button>
+              <button class="s-seg-btn s-seg-export" onclick={() => exportLog('csv')}>CSV</button>
+            </div>
+          </div>
+          {#if exportStatus}
+            <div class="s-export-status">{exportStatus}</div>
+          {/if}
+        </section>
+
+        <!-- ── WINDOWS INTEGRATION ───────────────────── -->
+        <section class="s-section">
+          <h3 class="s-heading">Windows Integration</h3>
+
+          <!-- Explorer context menu -->
+          <div class="s-row">
+            <div class="s-label-group">
+              <span class="s-label">Explorer Context Menu</span>
+              <span class="s-desc">Add "Copy with NexExplorer" and "Open in NexExplorer" to right-click menus</span>
+            </div>
+            <button
+              class="s-seg-btn s-seg-export"
+              onclick={toggleExplorerIntegration}
+            >{explorerInstalled ? 'Remove' : 'Install'}</button>
+          </div>
+          {#if explorerStatus}
+            <div class="s-export-status">{explorerStatus}</div>
+          {/if}
         </section>
 
         <!-- ── FILES ──────────────────────────────────── -->
@@ -414,6 +543,91 @@
   }
 
   /* ── Toggle ───────────────────────────────────────── */
+  .s-select {
+    height: 28px;
+    padding: 0 8px;
+    background: var(--surface-raised);
+    border: 1px solid var(--border-active);
+    border-radius: var(--sq-sm);
+    color: var(--text);
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .s-text-input {
+    height: 28px;
+    padding: 0 8px;
+    background: var(--surface-raised);
+    border: 1px solid var(--border-active);
+    border-radius: var(--sq-sm);
+    color: var(--text);
+    font-size: 12px;
+    font-family: inherit;
+    flex: 1;
+    min-width: 180px;
+    max-width: 260px;
+    box-sizing: border-box;
+  }
+  .s-text-input:focus { border-color: var(--accent); outline: none; }
+
+  .s-segmented {
+    display: flex;
+    border: 1px solid var(--border-active);
+    border-radius: var(--sq-sm);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .s-seg-btn {
+    padding: 4px 14px;
+    font-size: 12px;
+    font-family: inherit;
+    background: var(--surface-raised);
+    color: var(--text-muted);
+    border: none;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+  }
+
+  .s-seg-btn:not(:last-child) {
+    border-right: 1px solid var(--border-active);
+  }
+
+  .s-seg-active {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 500;
+  }
+
+  .s-export-btns {
+    display: flex;
+    border: 1px solid var(--border-active);
+    border-radius: var(--sq-sm);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .s-seg-export {
+    padding: 4px 14px;
+    font-size: 12px;
+    font-family: inherit;
+    background: var(--surface-raised);
+    color: var(--text-muted);
+    border: none;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+  }
+  .s-seg-export:not(:last-child) { border-right: 1px solid var(--border-active); }
+  .s-seg-export:hover { background: var(--surface-high); color: var(--text); }
+
+  .s-export-status {
+    font-size: 11px;
+    color: var(--text-muted);
+    padding: 0 16px 8px;
+  }
+
   .toggle {
     width: 38px;
     height: 22px;

@@ -40,6 +40,11 @@ pub fn cancel_transfer(id: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn skip_file(id: String) -> Result<(), String> {
+    transfer_engine::skip_current_file(&id)
+}
+
+#[tauri::command]
 pub fn resolve_conflicts(
     id: String,
     decisions: HashMap<String, String>,
@@ -420,4 +425,160 @@ pub fn create_shell_new_item(parent_path: String, name: String, ext: String) -> 
     // NullFile / fallback: empty file
     fs::File::create(&new_file).map_err(|e| format!("Failed to create file: {}", e))?;
     Ok(new_file.display().to_string())
+}
+
+// ── Windows Explorer right-click integration ──────────────────────────────────
+//
+// Writes to HKCU\Software\Classes (no admin required). Adds two context menu
+// entries on * (files) and Directory (folders):
+//   • "Copy with NexExplorer"   → nexexplorer://copy?paths=<path>
+//   • "Open in NexExplorer"     → nexexplorer://navigate?path=<path>
+//
+// The app registers a custom URI scheme handler that routes these at startup.
+// Uninstall removes all written keys cleanly.
+
+/// Install "Copy with NexExplorer" and "Open in NexExplorer" context menu entries.
+/// Also registers the nexexplorer:// URI scheme so the OS can launch the app.
+/// Uses HKCU — no administrator rights required.
+#[tauri::command]
+pub fn install_explorer_integration(exe_path: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        use winreg::enums::*;
+        use winreg::RegKey;
+
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let classes = "Software\\Classes";
+
+        // ── URI scheme: nexexplorer:// ────────────────────────────────────────
+        let (uri_key, _) = hkcu.create_subkey(format!("{}\\nexexplorer", classes))
+            .map_err(|e| format!("Registry error: {}", e))?;
+        uri_key.set_value("", &"URL:NexExplorer Protocol")
+            .map_err(|e| format!("Registry error: {}", e))?;
+        uri_key.set_value("URL Protocol", &"")
+            .map_err(|e| format!("Registry error: {}", e))?;
+
+        let (cmd_key, _) = hkcu.create_subkey(format!("{}\\nexexplorer\\shell\\open\\command", classes))
+            .map_err(|e| format!("Registry error: {}", e))?;
+        cmd_key.set_value("", &format!("\"{}\" \"%1\"", exe_path))
+            .map_err(|e| format!("Registry error: {}", e))?;
+
+        // ── Context menu on files (*) ─────────────────────────────────────────
+        let base_file = format!("{}\\*\\shell", classes);
+
+        let (copy_key, _) = hkcu.create_subkey(format!("{}\\NexExplorer.CopyFiles", base_file))
+            .map_err(|e| format!("Registry error: {}", e))?;
+        copy_key.set_value("", &"Copy with NexExplorer")
+            .map_err(|e| format!("Registry error: {}", e))?;
+        copy_key.set_value("Icon", &exe_path)
+            .map_err(|e| format!("Registry error: {}", e))?;
+
+        let (copy_cmd, _) = hkcu.create_subkey(format!("{}\\NexExplorer.CopyFiles\\command", base_file))
+            .map_err(|e| format!("Registry error: {}", e))?;
+        copy_cmd.set_value("", &format!("\"{}\" --copy \"%1\"", exe_path))
+            .map_err(|e| format!("Registry error: {}", e))?;
+
+        // ── Context menu on folders (Directory) ───────────────────────────────
+        let base_dir = format!("{}\\Directory\\shell", classes);
+
+        let (open_key, _) = hkcu.create_subkey(format!("{}\\NexExplorer.OpenDir", base_dir))
+            .map_err(|e| format!("Registry error: {}", e))?;
+        open_key.set_value("", &"Open in NexExplorer")
+            .map_err(|e| format!("Registry error: {}", e))?;
+        open_key.set_value("Icon", &exe_path)
+            .map_err(|e| format!("Registry error: {}", e))?;
+
+        let (open_cmd, _) = hkcu.create_subkey(format!("{}\\NexExplorer.OpenDir\\command", base_dir))
+            .map_err(|e| format!("Registry error: {}", e))?;
+        open_cmd.set_value("", &format!("\"{}\" --navigate \"%1\"", exe_path))
+            .map_err(|e| format!("Registry error: {}", e))?;
+
+        // Also add "Copy with NexExplorer" on Directory (for folder-to-folder copy)
+        let (dir_copy_key, _) = hkcu.create_subkey(format!("{}\\NexExplorer.CopyDir", base_dir))
+            .map_err(|e| format!("Registry error: {}", e))?;
+        dir_copy_key.set_value("", &"Copy with NexExplorer")
+            .map_err(|e| format!("Registry error: {}", e))?;
+        dir_copy_key.set_value("Icon", &exe_path)
+            .map_err(|e| format!("Registry error: {}", e))?;
+
+        let (dir_copy_cmd, _) = hkcu.create_subkey(format!("{}\\NexExplorer.CopyDir\\command", base_dir))
+            .map_err(|e| format!("Registry error: {}", e))?;
+        dir_copy_cmd.set_value("", &format!("\"{}\" --copy \"%1\"", exe_path))
+            .map_err(|e| format!("Registry error: {}", e))?;
+
+        Ok(())
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = exe_path;
+        Err("Explorer integration is Windows-only".to_string())
+    }
+}
+
+/// Remove all NexExplorer context menu entries and the URI scheme from HKCU.
+#[tauri::command]
+pub fn uninstall_explorer_integration() -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        use winreg::enums::*;
+        use winreg::RegKey;
+
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let classes = "Software\\Classes";
+
+        let keys_to_delete = [
+            format!("{}\\nexexplorer\\shell\\open\\command", classes),
+            format!("{}\\nexexplorer\\shell\\open", classes),
+            format!("{}\\nexexplorer\\shell", classes),
+            format!("{}\\nexexplorer", classes),
+            format!("{}\\*\\shell\\NexExplorer.CopyFiles\\command", classes),
+            format!("{}\\*\\shell\\NexExplorer.CopyFiles", classes),
+            format!("{}\\Directory\\shell\\NexExplorer.OpenDir\\command", classes),
+            format!("{}\\Directory\\shell\\NexExplorer.OpenDir", classes),
+            format!("{}\\Directory\\shell\\NexExplorer.CopyDir\\command", classes),
+            format!("{}\\Directory\\shell\\NexExplorer.CopyDir", classes),
+        ];
+
+        for key_path in &keys_to_delete {
+            match hkcu.delete_subkey(key_path) {
+                Ok(()) => {}
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
+                Err(e) => {
+                    // Non-fatal — log and continue so partial uninstalls don't abort
+                    eprintln!("Warning: could not delete {}: {}", key_path, e);
+                }
+            }
+        }
+
+        Ok(())
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        Err("Explorer integration is Windows-only".to_string())
+    }
+}
+
+/// Returns the path of the running NexExplorer executable.
+/// Used by the Settings UI to pass to install_explorer_integration.
+#[tauri::command]
+pub fn get_exe_path() -> Result<String, String> {
+    std::env::current_exe()
+        .map(|p| p.display().to_string())
+        .map_err(|e| e.to_string())
+}
+
+/// Returns true if the NexExplorer context menu entries are currently installed.
+#[tauri::command]
+pub fn is_explorer_integration_installed() -> bool {
+    #[cfg(target_os = "windows")]
+    {
+        use winreg::enums::*;
+        use winreg::RegKey;
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        hkcu.open_subkey("Software\\Classes\\nexexplorer").is_ok()
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        false
+    }
 }

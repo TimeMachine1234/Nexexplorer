@@ -99,6 +99,38 @@ pub fn run() {
                     }
                 }
             }
+
+            // Handle command-line args from Windows Explorer right-click integration.
+            // Explorer passes: nexexplorer.exe --copy "C:\path\to\file"
+            //                  nexexplorer.exe --navigate "C:\path\to\folder"
+            // We emit these as events so the frontend can react immediately after load.
+            {
+                use tauri::Emitter;
+                let args: Vec<String> = std::env::args().collect();
+                let mut i = 1usize;
+                while i < args.len() {
+                    match args[i].as_str() {
+                        "--copy" => {
+                            if i + 1 < args.len() {
+                                // Collect all remaining args as paths (Explorer passes one at a time
+                                // but multi-select via SendTo can pass many)
+                                let paths: Vec<String> = args[i+1..].to_vec();
+                                let _ = app.emit("explorer-copy", paths);
+                                break;
+                            }
+                        }
+                        "--navigate" => {
+                            if i + 1 < args.len() {
+                                let _ = app.emit("explorer-navigate", &args[i+1]);
+                                break;
+                            }
+                        }
+                        _ => {}
+                    }
+                    i += 1;
+                }
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -110,6 +142,11 @@ pub fn run() {
             commands::operations::pause_transfer,
             commands::operations::resume_transfer,
             commands::operations::cancel_transfer,
+            commands::operations::skip_file,
+            commands::integrity::generate_checksums,
+            commands::integrity::secure_delete_files,
+            commands::integrity::run_completion_script,
+            commands::integrity::export_transfer_log,
             commands::operations::get_transfer_progress,
             commands::operations::list_transfers,
             commands::operations::resolve_conflicts,
@@ -125,6 +162,10 @@ pub fn run() {
             commands::operations::create_shell_new_item,
             commands::operations::new_folder_with_items,
             commands::operations::mirror_folder_structure,
+            commands::operations::install_explorer_integration,
+            commands::operations::uninstall_explorer_integration,
+            commands::operations::is_explorer_integration_installed,
+            commands::operations::get_exe_path,
             commands::preview::get_file_metadata,
             commands::preview::read_text_preview,
             commands::preview::read_file_base64,

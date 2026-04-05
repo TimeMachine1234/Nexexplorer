@@ -8,7 +8,9 @@
     pauseTransfer,
     resumeTransfer,
   } from "$lib/stores/transfers";
+  import { settings } from "$lib/stores/settings";
   import TransferItem from "./TransferItem.svelte";
+  import TransferItemPower from "./TransferItemPower.svelte";
 
   interface Props {
     onClose: () => void;
@@ -134,7 +136,11 @@
       <div class="tq-empty">No active transfers</div>
     {:else}
       {#each $transfers as t (t.id)}
-        <TransferItem {t} />
+        {#if $settings.transferUiMode === 'power'}
+          <TransferItemPower {t} />
+        {:else}
+          <TransferItem {t} />
+        {/if}
       {/each}
     {/if}
   </div>

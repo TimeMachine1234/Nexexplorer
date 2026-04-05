@@ -128,7 +128,14 @@ export function setupTransferListener() {
     "transfer-done",
     (event) => {
       const { id, title, body, status } = event.payload;
-      if (status !== "Cancelled") showToast(id, title, body);
+      if (status !== "Cancelled") {
+        showToast(id, title, body);
+        // Run completion script if configured
+        const s = get(settings);
+        if (s.onFinishAction === 'script' && s.onFinishScript.trim()) {
+          invoke("run_completion_script", { scriptPath: s.onFinishScript }).catch(() => {});
+        }
+      }
     }
   );
 
@@ -245,6 +252,10 @@ export async function resumeTransfer(id: string) {
 
 export async function cancelTransfer(id: string) {
   await invoke("cancel_transfer", { id });
+}
+
+export async function skipFile(id: string) {
+  await invoke("skip_file", { id });
 }
 
 export async function resolveConflicts(

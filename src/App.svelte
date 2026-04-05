@@ -28,7 +28,9 @@
   import Toast from "$lib/components/common/Toast.svelte";
   import { selectedFileForPreview, debouncedPreviewPath } from "./lib/stores/preview";
   import { invoke } from "@tauri-apps/api/core";
+  import { listen } from "@tauri-apps/api/event";
   import { settings } from "./lib/stores/settings";
+  import { clipboard } from "./lib/stores/transfers";
 
   let paneManager: PaneManager | undefined = $state();
   let scanRafId = 0;
@@ -56,6 +58,17 @@
       console.warn("[indexer] Auto-start failed:", e);
     }
   })();
+
+  // Handle Windows Explorer right-click integration events
+  // --copy paths arrive as a string[] to be staged for paste
+  // --navigate path navigates the active pane
+  listen<string[]>("explorer-copy", (event) => {
+    clipboard.set({ op: "copy", paths: event.payload });
+    showTransferPanel = true;
+  });
+  listen<string>("explorer-navigate", (event) => {
+    handleSidebarNavigate(event.payload);
+  });
 
   // Auto-show transfer panel when transfers start
   $effect(() => {

@@ -196,6 +196,14 @@ pub fn get_rate_limit() -> u64 {
     RATE_LIMIT_BPS.load(Ordering::Relaxed)
 }
 
+/// Signal the transfer to skip the current file and move to the next one.
+pub fn skip_current_file(id: &str) -> Result<(), String> {
+    let guard = ENGINE_TRANSFERS.lock().unwrap();
+    let et = guard.get(id).ok_or_else(|| "Transfer not found".to_string())?;
+    et.control.lock().unwrap().skip_current = true;
+    Ok(())
+}
+
 /// Sleep the calling thread enough to honour the global rate limit after writing `bytes`.
 /// `chunk_start` is the Instant before the chunk write; used to measure actual elapsed time.
 #[inline]
@@ -434,6 +442,8 @@ struct ControlBlock {
     calibrating: bool,
     per_file_resolution: HashMap<String, ConflictResolution>,
     default_resolution: ConflictResolution,
+    /// Set to true by skip_file command; copy loop detects and clears it to skip current file
+    skip_current: bool,
 }
 
 struct EngineTransfer {
@@ -458,14 +468,30 @@ const LARGE_FILE_THRESHOLD: u64 = 256 * 1024 * 1024;  // 256MB → mmap
 
 enum CopyErr {
     Cancelled,
+    Skipped,
     Io(std::io::Error),
+}
+
+enum CopyResult {
+    Ok,
+    Skipped,
+    Failed,
+    Cancelled,
 }
 
 fn check_pause_cancel(
     control: &Arc<Mutex<ControlBlock>>,
     pause_sync: &Arc<(Mutex<bool>, Condvar)>,
 ) -> Result<(), CopyErr> {
-    let status = control.lock().unwrap().status.clone();
+    let (status, skip) = {
+        let mut cb = control.lock().unwrap();
+        if cb.skip_current {
+            cb.skip_current = false; // consume the flag immediately
+            return Err(CopyErr::Skipped);
+        }
+        (cb.status.clone(), false)
+    };
+    let _ = skip;
     if status == TransferStatus::Cancelled {
         return Err(CopyErr::Cancelled);
     }
@@ -518,6 +544,26 @@ fn copy_file_adaptive(
     Ok(())
 }
 
+/// Open a source file for reading. On Windows, retries with full share mode
+/// (FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE = 0x7) when the
+/// normal open fails. This handles files locked by Office, browsers, log
+/// writers, etc. without requiring VSS or admin rights.
+fn open_for_copy(path: &Path) -> std::io::Result<fs::File> {
+    match fs::File::open(path) {
+        Ok(f) => Ok(f),
+        #[cfg(target_os = "windows")]
+        Err(_) => {
+            use std::os::windows::fs::OpenOptionsExt;
+            fs::OpenOptions::new()
+                .read(true)
+                .share_mode(0x0000_0007) // FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE
+                .open(path)
+        }
+        #[cfg(not(target_os = "windows"))]
+        Err(e) => Err(e),
+    }
+}
+
 fn copy_buffered(
     src: &Path,
     dst: &Path,
@@ -526,7 +572,7 @@ fn copy_buffered(
     pause_sync: &Arc<(Mutex<bool>, Condvar)>,
     counters: &Arc<AtomicCounters>,
 ) -> Result<(), CopyErr> {
-    let mut reader = fs::File::open(src).map_err(CopyErr::Io)?; // already long_path'd by caller
+    let mut reader = open_for_copy(src).map_err(CopyErr::Io)?; // already long_path'd by caller
     let mut writer = fs::File::create(dst).map_err(CopyErr::Io)?;
     let mut buf = vec![0u8; buf_size];
     loop {
@@ -551,7 +597,7 @@ fn copy_mmap(
     pause_sync: &Arc<(Mutex<bool>, Condvar)>,
     counters: &Arc<AtomicCounters>,
 ) -> Result<(), CopyErr> {
-    let src_file = fs::File::open(src).map_err(CopyErr::Io)?;
+    let src_file = open_for_copy(src).map_err(CopyErr::Io)?;
     let dst_file = fs::OpenOptions::new()
         .write(true)
         .create(true)
@@ -588,8 +634,7 @@ fn copy_with_retry(
     control: &Arc<Mutex<ControlBlock>>,
     pause_sync: &Arc<(Mutex<bool>, Condvar)>,
     counters: &Arc<AtomicCounters>,
-) -> bool {
-    // Returns true = success, false = failed (or cancelled — check status)
+) -> CopyResult {
     for attempt in 0u32..3 {
         match copy_file_adaptive(src, dst, buf_size, control, pause_sync, counters) {
             Ok(()) => {
@@ -601,7 +646,6 @@ fn copy_with_retry(
                             counters.verified_files.fetch_add(1, Ordering::Relaxed);
                         }
                         _ => {
-                            // CRC mismatch or read error — retry if attempts remain
                             let _ = fs::remove_file(&long_path(dst));
                             if attempt < 2 {
                                 std::thread::sleep(Duration::from_secs((attempt + 1) as u64));
@@ -611,15 +655,19 @@ fn copy_with_retry(
                             if cb.verify_failed_files.len() < 1000 {
                                 cb.verify_failed_files.push(src.display().to_string());
                             }
-                            return false;
+                            return CopyResult::Failed;
                         }
                     }
                 }
-                return true;
+                return CopyResult::Ok;
             }
             Err(CopyErr::Cancelled) => {
-                let _ = fs::remove_file(&long_path(dst)); // remove partial file on cancel
-                return false;
+                let _ = fs::remove_file(&long_path(dst));
+                return CopyResult::Cancelled;
+            }
+            Err(CopyErr::Skipped) => {
+                let _ = fs::remove_file(&long_path(dst));
+                return CopyResult::Skipped;
             }
             Err(CopyErr::Io(_)) if attempt < 2 => {
                 let _ = fs::remove_file(&long_path(dst));
@@ -631,11 +679,11 @@ fn copy_with_retry(
                     cb.failed_files.push(format!("{}: {}", src.display(), e));
                 }
                 let _ = fs::remove_file(&long_path(dst));
-                return false;
+                return CopyResult::Failed;
             }
         }
     }
-    false
+    CopyResult::Failed
 }
 
 // ── Size calculation ──────────────────────────────────────────────────────────
@@ -896,6 +944,7 @@ pub fn start_engine_transfer(
         calibrating: false,
         per_file_resolution: HashMap::new(),
         default_resolution: ConflictResolution::Rename,
+        skip_current: false,
     }));
     let pause_sync = Arc::new((Mutex::new(false), Condvar::new()));
     let conflict_sync = Arc::new((Mutex::new(false), Condvar::new()));
@@ -1069,21 +1118,23 @@ fn run_orchestrator(app: AppHandle, et: Arc<EngineTransfer>) {
                     cb.current_file = job.src.display().to_string();
                 }
 
-                let ok = copy_with_retry(
+                match copy_with_retry(
                     &job.src, &job.dst, buf_size, verify2,
                     &control, &pause_sync, &counters,
-                );
-
-                if ok {
-                    counters.files_done.fetch_add(1, Ordering::Relaxed);
-                    if op2 == TransferOp::Move {
-                        let _ = fs::remove_file(&job.src);
+                ) {
+                    CopyResult::Ok => {
+                        counters.files_done.fetch_add(1, Ordering::Relaxed);
+                        if op2 == TransferOp::Move {
+                            let _ = fs::remove_file(&job.src);
+                        }
                     }
-                } else {
-                    // Check if it was a cancel
-                    if control.lock().unwrap().status == TransferStatus::Cancelled {
-                        break;
+                    CopyResult::Skipped => {
+                        // User skipped this file — not a failure, just move on
                     }
+                    CopyResult::Failed => {
+                        // Already recorded in failed_files inside copy_with_retry
+                    }
+                    CopyResult::Cancelled => break,
                 }
             }
         });
